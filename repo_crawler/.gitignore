@@ -1,0 +1,6 @@
+*.pyc
+debuginfo.centos.org
+*.db
+test*
+*.log
+*.html
