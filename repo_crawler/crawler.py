@@ -87,6 +87,7 @@ class Crawler():
 
 if __name__ == "__main__":
     mycrawler = Crawler()
+    # Be careful: if seed is a dir, make sure you add / in the end
     mycrawler.add_seeds(['http://debuginfo.centos.org'])
     rules = {'^http://debuginfo\.centos\.org(.*)$':['^http://debuginfo\.centos\.org/(.+)/$']}
     #rules = {'^http://debuginfo\.centos\.org/6(.*)$':['^(.+)/$']}

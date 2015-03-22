@@ -1,0 +1,6 @@
+*.pyc
+test*
+*.log
+*.html
+config.py
+access.redhat.com
