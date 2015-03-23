@@ -17,7 +17,11 @@ class RedHatKBStateDB( CrawlerMongoDB ):
     def update(self, url, state):
         self.table.update({'url':url}, {'url':url, 'state':state}, True)
 
+    def is_url_downloaded(self, url):
+        return self.table.find_one({'url':url}, {'state':True}) != None 
+
 if __name__ == "__main__":
     test = RedHatKBStateDB()
-    test.update("www.aaa", True) 
-    test.update("www.bbb", False) 
+   # test.update("www.aaa", True) 
+   # test.update("www.bbb", False)
+    print test.is_url_downloaded("https://access.redhat.com/solutions/207253") 

@@ -6,9 +6,9 @@ from login import RedHatLogin
 import config
 from threading import Thread
 
-begin = 6876
+begin = 0
 end = 1000000
-work_size = 200000
+work_size = end / config.THREAD_NUM
  
 class RedHatCrawler():
 
@@ -19,6 +19,8 @@ class RedHatCrawler():
     def download_files(self, low, high):
         for i in range(low, high):
             url = "https://access.redhat.com/solutions/%06d" %(i) 
+            if self.rh_kb_state_db.is_url_downloaded(url):
+                continue
             cmd = "wget --force-directories -c --load-cookies " + config.COOKIES_FILENAME + " " + url
             ret_code = os.system(cmd)
             if ret_code == 2048:
