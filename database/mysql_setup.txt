@@ -1,16 +1,19 @@
-# Install MySQL server
+# 1. Install MySQL server
 sudo yum install mysql-server -y
-# Start the service
+# 2. Create Dir /cores/database/mysql (Same own and mod as /var/lib/mysql)
+# 3. Configure /etc/my.conf
+    # Change datadir and socket's prefix to /cores/databse/mysql
+# 4. Start the service
 sudo /sbin/service mysqld start
-# Start when boot
+# 5. Start when boot
 sudo chkconfig mysqld on
-# Set root password  
+# 6. Set root password
 sudo /usr/bin/mysql_secure_installation
-# Install phpMyAdmin
+# 7. Install phpMyAdmin
 sudo yum -y install phpmyadmin
 # I have take really long time to configure phpmyadmin, strange problems
 # Only when I remove /usr/share/phpMyAdmin dir, remove it, then reinstall it, then success
-# Configure Require IP in /etc/httpd/conf.d/phpMyAdmin.conf
+# 8. Configure Require IP in /etc/httpd/conf.d/phpMyAdmin.conf
 vim /etc/httpd/conf.d/phpMyAdmin.conf
-# restart httpd service
+# 9. restart httpd service
 service httpd restart

@@ -22,7 +22,8 @@ Make sure your setting.
 Permissive
 
 - Install EPEL repos
-# rpm -ivh https://urldefense.proofpoint.com/v2/url?u=http-3A__fedora.mirrors.pair.com_epel_6_i386_epel-2Drelease-2D6-2D8.noarch.rpm&d=AwIGaQ&c=Sqcl0Ez6M0X8aeM67LKIiDJAXVeAw-YihVMNtXt-uEs&r=xOz7GpKXsDUEKIXPxBMZVar1gkLNtIKNa0PrpsRjodM&m=SovTXN8CaGX8s-0A-ZMj-dSLqj894EYFF8gztVuoqto&s=XUCl7qgHBZGvjqQpVmbLCqUpKZRrG4fOtejuqEzkR_k&e= 
+# wget http://dl.fedoraproject.org/pub/epel/6/x86_64/epel-release-6-8.noarch.rpm
+# rpm -ivh *.rpm 
 
 - Install the following RPMs
 # yum install kexec-tools pcp crash crash-gcore-command man -y

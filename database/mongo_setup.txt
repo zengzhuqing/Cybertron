@@ -1,0 +1,9 @@
+# 1. Install MongoDB server
+sudo yum install python-pymongo.x86_64 mongodb.x86_64 mongodb-server.x86_64 -y
+# 2. Create Dir /cores/database/mongodb (Same own and mod as /var/lib/mongodb)
+# 3. Configure /etc/mongodb.conf
+    # Change dbpate to /cores/databse/mongodb
+# 4. Start the service
+sudo /sbin/service mongod start
+# 5. Start when boot
+sudo chkconfig mongod on
