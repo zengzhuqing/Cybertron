@@ -6,6 +6,7 @@ from database import QueueDB, WebpageDB, DuplCheckDB
 from mongodb import RepoStateDB 
 from downloader import DownloadManager
 from webpage import WebPage
+import config
 
 class Crawler():
 
@@ -49,7 +50,7 @@ class Crawler():
     
     def download_files(self, files):
         for f in files:
-            cmd = "wget --force-directories -c " + f
+            cmd = "wget --force-directories -c " + f + " -P " + config.repos_dir
             ret_code = os.system(cmd)
             self.repodb.update(f, ret_code == 0)
 

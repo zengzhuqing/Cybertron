@@ -1,0 +1,131 @@
+=========================================================
+Retrace Server Setup and Usage Manual
+
+=========================================================
+
+Note: This document is based on the following versions at the time of this writing.
+    
+    - RHEL6(x86_64)
+    - retrace-server-1.10-1.el6.noarch    
+    - mock-1.1.32-1.el6.noarch
+    - crash-6.1.0-5.el6.x86_64
+    
+  
+	
+1. Installing Retrace Server
+
+- Set SELinux to permissive. Edit /etc/selinux/config 
+SELINUX=permissive
+
+Make sure your setting.
+# getenforce
+Permissive
+
+- Install EPEL repos
+# rpm -ivh https://urldefense.proofpoint.com/v2/url?u=http-3A__fedora.mirrors.pair.com_epel_6_i386_epel-2Drelease-2D6-2D8.noarch.rpm&d=AwIGaQ&c=Sqcl0Ez6M0X8aeM67LKIiDJAXVeAw-YihVMNtXt-uEs&r=xOz7GpKXsDUEKIXPxBMZVar1gkLNtIKNa0PrpsRjodM&m=SovTXN8CaGX8s-0A-ZMj-dSLqj894EYFF8gztVuoqto&s=XUCl7qgHBZGvjqQpVmbLCqUpKZRrG4fOtejuqEzkR_k&e= 
+
+- Install the following RPMs
+# yum install kexec-tools pcp crash crash-gcore-command man -y
+
+- Install Apache
+# yum install httpd mod_ssl -y
+
+- Install retrace-server package
+# yum install retrace-server -y
+
+
+
+
+2. Configuring Retrace Server
+
+- Create the cores directories and subdirectories
+# mkdir /cores
+# mkdir /cores/{retrace,bugzilla,archive,training,exceptions}
+# mkdir /cores/retrace/{repos,tasks}
+
+
+- Edit /etc/httpd/conf.d/retrace-server-httpd.conf
+# diff /etc/httpd/conf.d/retrace-server-httpd.conf /etc/httpd/conf.d/retrace-server-httpd.conf.ori
+16c16
+< <Directory "/cores/retrace/repos">
+---
+> <Directory "/var/cache/retrace-server">
+44c44
+< Alias /repos /cores/retrace/repos
+---
+> Alias /repos /var/cache/retrace-server
+
+
+- Edit /etc/retrace-server.conf
+#  diff /etc/retrace-server.conf /etc/retrace-server.conf.ori 
+11c11
+< RequireHTTPS = 0
+---
+> RequireHTTPS = 1
+17c17
+< AllowInteractive = 1
+---
+> AllowInteractive = 0
+23c23
+< AllowTaskManager = 1
+---
+> AllowTaskManager = 0
+
+
+- Setup crontab to do file task cleanup
+# crontab -l
+0 * * * * /usr/bin/retrace-server-cleanup >> /var/log/retrace-server/cleanup_error.log 2>&1
+
+
+- Start httpd
+# chkconfig httpd on
+# service httpd start
+
+
+- Download debuginfo package
+e.g.
+# ls /var/cache/retrace-server/kernel/
+kernel-debuginfo-2.6.32-431.1.2.el6.x86_64.rpm
+
+
+
+
+
+3. Using Retrace Server
+(sample)
+- Access https://urldefense.proofpoint.com/v2/url?u=http-3A__&d=AwIGaQ&c=Sqcl0Ez6M0X8aeM67LKIiDJAXVeAw-YihVMNtXt-uEs&r=xOz7GpKXsDUEKIXPxBMZVar1gkLNtIKNa0PrpsRjodM&m=SovTXN8CaGX8s-0A-ZMj-dSLqj894EYFF8gztVuoqto&s=D77DZQQCQFiIUgFt2wjfYLt6CsJiFZguyZzNddku1c4&e= <Server_IP>/manager/.
+
+- Locate vmcore to /cores, and click "Create" button with "/cores/vmcore".
+  Then, you will see the result with Task ID in "Finished tasks"
+
+- Run crash command
+# retrace-server-interact 903800739 crash
+
+** NOTE: We need this line with task ID to debug. **  
+
+- Sample output file
+# tree /var/spool/retrace-server/903800739
+/var/spool/retrace-server/903800739
+├── crash
+│   └── vmcore
+├── crashrc
+├── downloaded
+├── finished_time
+├── managed
+├── misc
+│   ├── bt-a
+│   ├── bt-filter
+│   ├── kmem-f
+│   ├── retrace-log -> /var/spool/retrace-server/903800739/retrace_log
+│   ├── sys
+│   └── sys-c
+├── password
+├── retrace_backtrace
+├── retrace_log
+├── started_time
+├── status
+├── type
+└── url
+
+
+

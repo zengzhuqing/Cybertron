@@ -1,5 +1,5 @@
 *.pyc
-debuginfo.centos.org
+debuginfo.centos.org*
 *.db
 test*
 *.log
