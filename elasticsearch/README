@@ -1,6 +1,2 @@
 1.TO SETUP
 run setup.sh
-2.TO RUN
-./elasticsearch/bin/elasticsearch -p pidfile
-3.TO STOP
-kill `cat pidfile` 
