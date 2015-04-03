@@ -66,7 +66,7 @@ class WebPage:
 class RedHatKBPage( WebPage ):
 
     def __init__(self, filename):
-        id = os.path.basename(filename)
+        self.id = os.path.basename(filename)
         url = "https://access.redhat.com/solutions/%s" %(id) 
         with open(filename, 'r') as f:
             html = f.read()
@@ -89,23 +89,38 @@ class RedHatKBPage( WebPage ):
     def is_en_page(self):
         return self.get_language() == 'en'
 
+    def get_url(self):
+        return self.url    
+    
+    def get_id(self):
+        return self.id 
+
     def get_issue(self):
         e = self.body_els[0].find_class(self.issue_class_name)
         if len(e) > 1:
             print "Warning: more than one Issue in html"
-        return e[0].text_content().strip()
+        if len(e) == 0:
+            return None
+        else:
+            return e[0].text_content().strip()
  
     def get_env(self):
         e = self.body_els[0].find_class(self.env_class_name)
         if len(e) > 1:
             print "Warning: more than one Issue in html"
-        return e[0].text_content().strip()
+        if len(e) == 0:
+            return None
+        else:
+            return e[0].text_content().strip()
     
     def get_resolution(self):
         e = self.body_els[0].find_class(self.resolution_class_name)
         if len(e) > 1:
             print "Warning: more than one Issue in html"
-        return e[0].text_content().strip()
+        if len(e) == 0:
+            return None
+        else:
+            return e[0].text_content().strip()
         
 if __name__ == "__main__":
     import sys
@@ -117,6 +132,7 @@ if __name__ == "__main__":
     page = RedHatKBPage(sys.argv[1])
     
     print page.get_language()
+    print page.get_url()
     print page.get_issue()
     print page.get_env()
     print page.get_resolution()

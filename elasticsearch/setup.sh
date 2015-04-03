@@ -16,7 +16,7 @@ STEP=`expr $STEP + 1`
 echo "STEP:$STEP extract elasticsearch package..."
 sudo rpm -iv elasticsearch-1.5.0.noarch.rpm
 sudo /sbin/chkconfig --add elasticsearch
-mkdir /cores/elasticsearch
+sudo mkdir /cores/elasticsearch
 sudo chown elasticsearch.elasticsearch /cores/elasticsearch
 sudo sed -i 's/^#path.data: \/path\/to\/data$/path.data: \/cores\/elasticsearch/' /etc/elasticsearch/elasticsearch.yml 
 sudo /etc/init.d/elasticsearch start
