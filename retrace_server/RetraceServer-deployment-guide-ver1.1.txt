@@ -71,7 +71,10 @@ Permissive
 < AllowTaskManager = 1
 ---
 > AllowTaskManager = 0
-
+78c78
+< RepoDir = /cores/retrace/repos
+---
+> RepoDir = /var/cache/retrace-server
 
 - Setup crontab to do file task cleanup
 # crontab -l
@@ -127,6 +130,4 @@ kernel-debuginfo-2.6.32-431.1.2.el6.x86_64.rpm
 ├── status
 ├── type
 └── url
-
-
 

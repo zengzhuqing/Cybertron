@@ -50,7 +50,8 @@ class Crawler():
     
     def download_files(self, files):
         for f in files:
-            cmd = "wget --force-directories -c " + f + " -P " + config.repos_dir
+            #cmd = "wget --force-directories -c " + f + " -P " + config.repos_dir
+            cmd = "wget -c " + f + " -P " + config.repos_dir
             ret_code = os.system(cmd)
             self.repodb.update(f, ret_code == 0)
 

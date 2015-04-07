@@ -1,1 +1,1 @@
-repos_dir = '/tmp'
+repos_dir = '/cores/retrace/repos'
