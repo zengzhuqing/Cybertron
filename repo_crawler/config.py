@@ -1,1 +1,1 @@
-repos_dir = '/cores/retrace/repos'
+repos_dir = '/cores/retrace/repos/kernel/Packages'

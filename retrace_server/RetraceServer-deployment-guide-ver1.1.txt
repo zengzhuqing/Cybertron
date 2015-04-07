@@ -43,7 +43,12 @@ Permissive
 # mkdir /cores
 # mkdir /cores/{retrace,bugzilla,archive,training,exceptions}
 # mkdir /cores/retrace/{repos,tasks}
+# mkdir /cores/retrace/repos/kernel/Packages
+# mkdir /cores/retrace/spool
 
+#add by zengzhuqing, for permission problems
+# chown -R retrace.retrace retrace
+# usermod -a -G retrace zengzhuqing
 
 - Edit /etc/httpd/conf.d/retrace-server-httpd.conf
 # diff /etc/httpd/conf.d/retrace-server-httpd.conf /etc/httpd/conf.d/retrace-server-httpd.conf.ori
@@ -75,6 +80,10 @@ Permissive
 < RepoDir = /cores/retrace/repos
 ---
 > RepoDir = /var/cache/retrace-server
+81c81
+< SaveDir = /cores/retrace/spool
+---
+> SaveDir = /var/spool/retrace-server
 
 - Setup crontab to do file task cleanup
 # crontab -l
@@ -131,3 +140,23 @@ kernel-debuginfo-2.6.32-431.1.2.el6.x86_64.rpm
 ├── type
 └── url
 
+11c11
+< RequireHTTPS = 0
+---
+> RequireHTTPS = 1
+17c17
+< AllowInteractive = 1
+---
+> AllowInteractive = 0
+23c23
+< AllowTaskManager = 1
+---
+> AllowTaskManager = 0
+78c78
+< RepoDir = /cores/retrace/repos
+---
+> RepoDir = /var/cache/retrace-server
+81c81
+< SaveDir = /cores/retrace/spool
+---
+> SaveDir = /var/spool/retrace-server
