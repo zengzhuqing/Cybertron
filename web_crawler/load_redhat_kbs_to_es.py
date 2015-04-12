@@ -25,7 +25,10 @@ class RHKB_to_ES_Loader:
             'url': page.get_url(),
             'issue': page.get_issue(),
             'env': page.get_env(),
-            'resolution': page.get_resolution()
+            'resolution': page.get_resolution(),
+            'rootcause': page.get_rootcause(),
+            'diagnostic': page.get_diagnostic(),
+            'title': page.get_title()
         }
         res = self.es.index(index = self.index, doc_type = self.doc_type, id = page.get_id(), body = doc)
         return res['created']

@@ -75,6 +75,8 @@ class RedHatKBPage( WebPage ):
         self.issue_class_name = "field-name-field-kcs-issue-txt"
         self.env_class_name = "field-name-field-kcs-environment-txt"
         self.resolution_class_name = "field-name-field-kcs-resolution-txt"
+        self.rootcause_class_name = "field-name-field-kcs-rootcause-txt"
+        self.diagnostic_class_name = "field-name-field-kcs-diagnostic-txt"
         self.body_els = self.doc.findall('./body/')
         if len(self.body_els) > 1:
             print "Warning: more than one body in html"
@@ -85,7 +87,16 @@ class RedHatKBPage( WebPage ):
             if e.items()[0][0] == 'name' and e.items()[0][1] == 'language':
                 return e.items()[1][1]
         return 'en' 
-
+    
+    def get_title(self):
+        e = self.doc.findall('./head/title')
+        if len(e) > 1:
+            print "Warning: more than one title in html"
+        if len(e) == 0:
+            return None
+        else:
+            return e[0].text_content()
+        
     def is_en_page(self):
         return self.get_language() == 'en'
 
@@ -107,7 +118,7 @@ class RedHatKBPage( WebPage ):
     def get_env(self):
         e = self.body_els[0].find_class(self.env_class_name)
         if len(e) > 1:
-            print "Warning: more than one Issue in html"
+            print "Warning: more than one Env in html"
         if len(e) == 0:
             return None
         else:
@@ -116,12 +127,30 @@ class RedHatKBPage( WebPage ):
     def get_resolution(self):
         e = self.body_els[0].find_class(self.resolution_class_name)
         if len(e) > 1:
-            print "Warning: more than one Issue in html"
+            print "Warning: more than one Resolution in html"
         if len(e) == 0:
             return None
         else:
             return e[0].text_content().strip()
         
+    def get_rootcause(self):
+        e = self.body_els[0].find_class(self.rootcause_class_name)
+        if len(e) > 1:
+            print "Warning: more than one Root Cause in html"
+        if len(e) == 0:
+            return None
+        else:
+            return e[0].text_content().strip()
+    
+    def get_diagnostic(self):
+        e = self.body_els[0].find_class(self.diagnostic_class_name)
+        if len(e) > 1:
+            print "Warning: more than one Diagnostic Steps in html"
+        if len(e) == 0:
+            return None
+        else:
+            return e[0].text_content().strip()
+    
 if __name__ == "__main__":
     import sys
     print len(sys.argv)
@@ -136,3 +165,6 @@ if __name__ == "__main__":
     print page.get_issue()
     print page.get_env()
     print page.get_resolution()
+    print page.get_rootcause()
+    print page.get_diagnostic()
+    print page.get_title()
