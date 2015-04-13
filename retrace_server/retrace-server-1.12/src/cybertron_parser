@@ -1,0 +1,153 @@
+#!/usr/bin/python
+import sys
+import re
+sys.path.insert(0, "/usr/share/retrace-server/")
+from retrace import *
+from plugins import *
+import json
+
+class RetraceLogParser:
+    
+    def __init__(self, task):
+        self.task = task
+        self.call_trace = []
+        self.crash_ip = None
+    
+    def is_kernel_oops_begin(self, line):
+        pattern = '^BUG'
+        prog = re.compile(pattern)
+        if prog.match(line) != None: 
+            return True
+        pattern = '^PGD'
+        prog = re.compile(pattern)
+        return prog.match(line) != None  
+
+    def parse_crash_ip(self, line):
+        pattern = '^RIP.*'
+        prog = re.compile(pattern)
+        result = prog.match(line)
+        if result != None:
+            match = re.split('[\ \t+]*', result.group(0))
+            return match[3]
+        pattern = '^EIP.*'
+        prog = re.compile(pattern)
+        if result != None:
+            match = re.split('[\ \t+]*', result.group(0))
+            print match[3] 
+        else:
+            return None
+
+    def is_call_trace_begin(self, line):
+        pattern = 'Call\ Trace'
+        prog = re.compile(pattern)
+        return prog.match(line) != None 
+        
+    def parse_call_trace(self, line):
+        pattern = '[\ \t]*\[<.*>\]'
+        prog = re.compile(pattern)
+        result = prog.match(line)
+        if result != None:
+            match = re.split('[\ +]*', line)
+            return match[-2]
+        else:
+            return None
+
+    def do_parse(self):
+        if task.has_backtrace() == False:
+            print "No backtrace"
+            return
+        log = task.get_backtrace()
+        lines = log.split('\n')
+        
+        is_begin = False
+        crash_ip_found = False
+        is_call_begin = False
+        is_call_end = False
+        for i in lines:
+            if is_begin == False:
+                is_begin = self.is_kernel_oops_begin(i)
+            elif crash_ip_found == False:
+                self.crash_ip = self.parse_crash_ip(i)
+                if self.crash_ip != None:
+                    crash_ip_found = True
+            elif is_call_begin == False:
+                is_call_begin = self.is_call_trace_begin(i)
+            elif is_call_end == False:
+                ret = self.parse_call_trace(i)
+                if ret != None:
+                    self.call_trace.append(ret)
+                else:
+                    is_call_end = True
+            else:
+                break
+
+    def get_crash_ip(self):
+        return self.crash_ip
+
+    def get_call_trace(self):
+        return self.call_trace 
+ 
+class RedHatKBSearch:
+
+    def __init__(self, parser):
+        self.matched_kbs = []
+        self.parser = parser   
+        self.es_url = "http://cybertron.eng.vmware.com:9200/redhat_kb/kb/_search" 
+        if self.is_crash_issue():
+            self.build_crash_query_dsl()
+        else:
+            self.build_unsupported_query_dsl()
+        #TODO: hang problem
+
+    def is_crash_issue(self):
+        return self.parser.get_crash_ip() != None 
+
+    def build_crash_query_dsl(self):
+        crash_ip = self.parser.get_crash_ip()
+        query = "EIP RIP" + " " + crash_ip
+        call_trace = self.parser.get_call_trace()
+        for i in call_trace:
+            query += " " + i            
+        self.query_dsl = '{"query":{"multi_match":{"query":"%s", "fields":["issue", "resolution", "diagnostic", "rootcause"]}}}' %query 
+
+    def build_unsupported_query_dsl(self):
+        ##TMP code
+        magic_code = "ABCDEFGHIJKLMN"
+        self.query_dsl = '{"query":{"multi_match":{"query":"%s", "fields":["issue", "resolution", "diagnostic", "rootcause"]}}}' %magic_code 
+
+    def do_search(self):
+        child = Popen(["curl", "-XGET", self.es_url, "-d", self.query_dsl], stdout=PIPE)
+        search_result = child.communicate(None)[0]
+        # Now parse the search result 
+        j = json.loads(search_result)
+        for i in j["hits"]["hits"]:
+            self.matched_kbs.append((i["_source"]["title"],i["_id"]))  
+    
+    def get_matched_kbs(self):
+        self.do_search()        
+        return self.matched_kbs          
+
+if __name__ == "__main__":
+    cmdline_parser = ArgumentParser(description="Execute a retrace parser job")
+    cmdline_parser.add_argument("task_id", type=int, help="Task ID (%s/<task_id>) must exist" % CONFIG["SaveDir"])
+    cmdline_parser.add_argument("--foreground", action="store_true", default=False, help="Do not fork to background")
+    cmdline = cmdline_parser.parse_args()
+
+    log = cmdline._log
+
+    try:
+        task = RetraceTask(cmdline.task_id)
+    except:
+        sys.stderr.write("Task '%d' does not exist\n" % cmdline.task_id)
+        exit(1)
+
+    parser = RetraceLogParser(task)
+    parser.do_parse()
+    #print parser.get_crash_ip()
+    #print parser.get_call_trace()
+    
+    searcher = RedHatKBSearch(parser)
+    #print searcher.do_search()
+    for i in searcher.get_matched_kbs():
+        url="https://access.redhat.com/solutions/%d" %int(i[1])
+        print i[0] + "@#$%" + url 

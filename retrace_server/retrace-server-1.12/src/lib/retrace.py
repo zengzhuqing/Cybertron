@@ -1320,6 +1320,7 @@ class RetraceTask:
     """Represents Retrace server's task."""
 
     BACKTRACE_FILE = "retrace_backtrace"
+    MATCHED_FILE = "cybertron_matched"
     CASENO_FILE = "caseno"
     CRASHRC_FILE = "crashrc"
     DOWNLOADED_FILE = "downloaded"
@@ -1555,6 +1556,18 @@ class RetraceTask:
     def set_backtrace(self, backtrace):
         """Atomically writes given string into BACKTRACE_FILE."""
         self.set_atomic(RetraceTask.BACKTRACE_FILE, backtrace)
+
+       # Add by zengzhuqing: {get,set}_matched
+    def get_matched(self):
+        """Returns None if there is no MATCHED_FILE in the task directory,
+        MATCHED_FILE's contents otherwise."""
+        # max 16 MB
+        return self.get(RetraceTask.MATCHED_FILE, maxlen=1 << 24)
+
+    def set_matched(self, matched):
+        """Atomically writes given string into MATCHED_FILE."""
+        self.set_atomic(RetraceTask.MATCHED_FILE, matched)
+    # Add by zengzhuqing end    
 
     def has_log(self):
         """Verifies whether LOG_FILE is present in the task directory."""

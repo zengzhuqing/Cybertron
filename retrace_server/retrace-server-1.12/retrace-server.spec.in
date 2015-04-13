@@ -122,6 +122,7 @@ fi
 %{_bindir}/%{name}-cleanup
 %{_bindir}/%{name}-reposync
 %{_bindir}/bt_filter
+%{_bindir}/cybertron_parser
 %{_bindir}/coredump2packages
 %{python_site}/retrace/*
 %{_datadir}/%{name}/*

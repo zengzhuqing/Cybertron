@@ -296,6 +296,7 @@ def application(environ, start_response):
         interactive = ""
         backtrace = ""
         backtracewindow = ""
+        testwindow = ""
         if not ftptask:
             if task.has_backtrace():
                 backtrace = "<tr><td colspan=\"2\"><a href=\"%s/backtrace\">%s</a></td></tr>" % (request.path_url.rstrip("/"), _("Show raw backtrace"))
@@ -313,6 +314,17 @@ def application(environ, start_response):
                               % (_("This is an interactive task"), _("You can jump to the chrooted shell with:"), filename,
                                  _("You can jump directly to the debugger with:"), filename, debugger,
                                  _("see"), _("for further information about cmdline flags"))
+
+                #TODO: change to a good name
+                testwindow = "<h2>RedHat KB Search Results</h2>"
+		if task.get_matched() != None:
+                    for i in task.get_matched().split('\n')[0:-1]:
+                        item = i.split('@#$%') 
+                        cur = "<p><a href=%s>%s</a></p>" %(item[1], item[0])
+                        testwindow += cur
+		else:
+	            testwindow += "<p>No matched KBs!</p>"	
+                    
             elif task.has_log():
                 backtracewindow = "<h2>Log:</h2><textarea class=\"backtrace\">%s</textarea>" % task.get_log()
 
@@ -427,6 +439,7 @@ def application(environ, start_response):
         output = output.replace("{back}", back)
         output = output.replace("{backtrace}", backtrace)
         output = output.replace("{backtracewindow}", backtracewindow)
+        output = output.replace("{testwindow}", testwindow)
         output = output.replace("{caseno}", caseno)
         output = output.replace("{notify}", notify)
         output = output.replace("{delete}", delete)

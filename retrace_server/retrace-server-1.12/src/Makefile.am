@@ -22,7 +22,8 @@ dist_bin_SCRIPTS = bt_filter \
                    retrace-server-cleanup \
                    retrace-server-reposync \
                    retrace-server-worker \
-                   retrace-server-interact
+                   retrace-server-interact \
+                   cybertron_parser
 
 interface_PYTHON = backtrace.wsgi \
                    create.wsgi \
