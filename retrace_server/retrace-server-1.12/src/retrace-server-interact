@@ -1,0 +1,150 @@
+#!/usr/bin/python
+import argparse
+import grp
+import os
+import pwd
+import sys
+import time
+from retrace import *
+from subprocess import list2cmdline
+
+ACTIONS = ["shell", "gdb", "crash", "printdir", "delete", "set-success", "set-fail"]
+
+def print_cmdline(cmdline):
+    sys.stderr.write("If you want to execute the command manually, you can run\n")
+    sys.stderr.write("$ %s\n\n" % list2cmdline(cmdline))
+
+if __name__ == "__main__":
+    groups = [grp.getgrgid(g).gr_name for g in os.getgroups()]
+    if not CONFIG["AuthGroup"] in groups:
+        sys.stderr.write("You must be a member '%s' group in order to use "
+                         "interactive debugging.\n" % CONFIG["AuthGroup"])
+        exit(1)
+
+    parser = argparse.ArgumentParser(description="Interact with retrace-server's chroot")
+    parser.add_argument("task_id", help="Task ID")
+    parser.add_argument("action", help="Desired action (%s)" % "|".join(ACTIONS))
+    parser.add_argument("-f", "--force", action="store_true", default=False,
+                        help="Run `set-success` or `set-fail` action even if the task is still running")
+    args = parser.parse_args()
+
+    if not args.action in ACTIONS:
+        sys.stderr.write("Invalid action. Allowed actions are: '%s'.\n" % "', '".join(ACTIONS))
+        exit(1)
+
+    try:
+        taskid = int(args.task_id)
+        task = RetraceTask(taskid)
+    except Exception as ex:
+        sys.stderr.write("%s\n" % ex)
+        exit(1)
+
+    # touch the task directory
+    os.utime(task.get_savedir(), None)
+
+    if args.action == "printdir":
+        sys.stdout.write("%s\n" % task.get_savedir())
+        exit(0)
+
+    if args.action == "delete":
+        username = pwd.getpwuid(os.getuid()).pw_name
+
+        if CONFIG["TaskManagerAuthDelete"] and \
+           not username in CONFIG["TaskManagerDeleteUsers"]:
+            sys.stderr.write("You are not allowed to delete tasks\n")
+            exit(1)
+
+        task.remove()
+        exit(0)
+
+    if args.action == "set-success":
+        if task.is_running() and not args.force:
+            sys.stderr.write("The task is still running and the effect of this "
+                             "action will most probably be overwritten. If you "
+                             "want to execute it anyway, use --force.\n")
+            exit(0)
+
+        task.set_status(STATUS_SUCCESS)
+        if not task.has_finished_time():
+            task.set_finished_time(int(time.time()))
+        exit(0)
+
+    if args.action == "set-fail":
+        if task.is_running() and not args.force:
+            sys.stderr.write("The task is still running and the effect of this "
+                             "action will most probably be overwritten. If you "
+                             "want to execute it anyway, use --force.\n")
+            exit(0)
+
+        task.set_status(STATUS_FAIL)
+        if not task.has_finished_time():
+            task.set_finished_time(int(time.time()))
+        exit(0)
+
+    if task.get_type() == TASK_RETRACE_INTERACTIVE:
+        if args.action == "shell":
+            cmdline = ["/usr/bin/mock", "--configdir", task.get_savedir(), "shell"]
+            print_cmdline(cmdline)
+            os.execvp(cmdline[0], cmdline)
+        if args.action == "gdb":
+            with open(os.path.join(task.get_savedir(), "crash", "executable"), "r") as exec_file:
+                executable = exec_file.read(ALLOWED_FILES["executable"])
+            if "'" in executable or '"' in executable:
+                sys.stderr.write("executable contains forbidden characters.\n")
+                exit(1)
+
+            cmdline = ["/usr/bin/mock", "--configdir", task.get_savedir(), "shell",
+                       "gdb '%s' /var/spool/abrt/crash/coredump" % executable]
+
+            print_cmdline(cmdline)
+            os.execvp(cmdline[0], cmdline)
+
+        sys.stderr.write("Action '%s' is not allowed for coredumps.\n" % args.action)
+        exit(1)
+    elif task.get_type() == TASK_VMCORE_INTERACTIVE:
+        vmcore = os.path.join(task.get_savedir(), "crash", "vmcore")
+        if task.has_kernelver():
+            kernelver = KernelVer(task.get_kernelver())
+        else:
+            kernelver = get_kernel_release(vmcore)
+
+        hostarch = os.uname()[4]
+        if hostarch in ["i486", "i586", "i686"]:
+            hostarch = "i386"
+
+        if args.action == "crash":
+            if kernelver.arch == hostarch:
+                vmlinux = prepare_debuginfo(vmcore, kernelver=kernelver)
+                if task.has_crashrc():
+                    cmdline = ["crash", "-i", task.get_crashrc_path(), vmcore, vmlinux]
+                else:
+                    cmdline = ["crash", vmcore, vmlinux]
+            else:
+                cfgdir = os.path.join(CONFIG["SaveDir"], "%d-kernel" % task.get_taskid())
+                vmlinux = prepare_debuginfo(vmcore, chroot=cfgdir, kernelver=kernelver)
+                if task.has_crashrc():
+                    cmdline = ["/usr/bin/mock", "--configdir", cfgdir,
+                               "shell", "crash -i %s %s %s" % (task.get_crashrc_path(), vmcore, vmlinux)]
+                else:
+                    cmdline = ["/usr/bin/mock", "--configdir", cfgdir,
+                               "shell", "crash %s %s" % (vmcore, vmlinux)]
+
+            print_cmdline(cmdline)
+            os.execvp(cmdline[0], cmdline)
+
+        if args.action == "shell":
+            if kernelver.arch != hostarch:
+                cmdline = ["/usr/bin/mock", "--configdir",
+                           os.path.join(CONFIG["SaveDir"], "%d-kernel" % task.get_taskid()), "shell"]
+
+                print_cmdline(cmdline)
+                os.execvp(cmdline[0], cmdline)
+
+            sys.stderr.write("The task does not require a chroot. You can use the current shell.\n")
+            exit(1)
+
+        sys.stderr.write("Action '%s' is not allowed for vmcores.\n" % args.action)
+        exit(1)
+    else:
+        sys.stderr.write("The specified task was not intended for interactive debugging.\n")
+        exit(1)

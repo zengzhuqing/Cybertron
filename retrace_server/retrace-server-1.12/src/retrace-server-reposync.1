@@ -1,0 +1,40 @@
+'\" t
+.\"     Title: retrace-server-reposync
+.\"    Author: [see the "AUTHORS" section]
+.\" Generator: DocBook XSL Stylesheets v1.75.2 <http://docbook.sf.net/>
+.\"      Date: 07/31/2014
+.\"    Manual: Retrace Server Manual
+.\"    Source: retrace-server 1.12
+.\"  Language: English
+.\"
+.TH "RETRACE\-SERVER\-REP" "1" "07/31/2014" "retrace\-server 1\&.12" "Retrace Server Manual"
+.\" -----------------------------------------------------------------
+.\" * set default formatting
+.\" -----------------------------------------------------------------
+.\" disable hyphenation
+.nh
+.\" disable justification (adjust text to left margin only)
+.ad l
+.\" -----------------------------------------------------------------
+.\" * MAIN CONTENT STARTS HERE *
+.\" -----------------------------------------------------------------
+.SH "NAME"
+retrace-server-reposync \- Maintains local repository cache for Retrace server\&.
+.SH "SYNOPSIS"
+.sp
+\fIretrace\-server\-reposync\fR distribution version architecture
+.SH "DESCRIPTION"
+.sp
+The tool downloads new packages from public repositories to a local repository cache\&. A proper plugin for every distribution needs to be installed in plugins directory (by default \fI/usr/share/retrace\-server/plugins\fR)\&. Should be set up in root\'s or retrace\'s crontab to run every day\&.
+.SH "AUTHORS"
+.sp
+.RS 4
+.ie n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+Michal Toman <\fImtoman@redhat\&.com\fR>
+.RE

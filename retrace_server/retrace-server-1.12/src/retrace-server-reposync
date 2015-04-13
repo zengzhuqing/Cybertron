@@ -1,0 +1,319 @@
+#!/usr/bin/python
+import argparse
+import errno
+import os
+import logging
+import grp
+import pwd
+import rpm
+import shutil
+import sys
+import tempfile
+import urllib2
+import yum
+from retrace import *
+
+sys.path.insert(0, "/usr/share/retrace-server")
+from plugins import *
+
+TARGET_USER = "retrace"
+TARGET_GROUP = CONFIG["AuthGroup"]
+
+BUFSIZE = 1 << 22 # 4 MB
+
+def sync_using_yum(targetid, repourl, globalyumcfg="", localyumcfg=""):
+    yumtmp = tempfile.NamedTemporaryFile(mode="w", delete=False,
+                                         prefix="repo", suffix=".conf")
+    yumtmp.write(globalyumcfg)
+    yumtmp.write("[%s]\n" % targetid)
+    yumtmp.write("name=%s\n" % targetid)
+    yumtmp.write("baseurl=%s\n" % repourl)
+    yumtmp.write(localyumcfg)
+    yumtmp.close()
+
+    with open(yumtmp.name, "r") as f:
+        log_debug("Using yum config from %s\n%s" % (yumtmp.name, f.read()))
+
+    pkgdir = os.path.join(CONFIG["RepoDir"], targetid, "Packages")
+    tmpdir = os.path.join(CONFIG["RepoDir"], "temp", targetid)
+    if not os.path.isdir(tmpdir):
+        os.makedirs(tmpdir)
+
+    try:
+        with open(os.path.join(CONFIG["LogDir"], "reposync_yum.log"), "a") as yumlog:
+            old_stderr = sys.stderr
+            sys.stderr = yumlog
+
+            # BEGIN YUM
+            yb = yum.YumBase()
+            yb.doConfigSetup(fn=yumtmp.name)
+            if not yb.setCacheDir():
+                sys.stderr = old_stderr
+                log_error("Unable to initialize yum cache")
+                return -1
+
+            cachedir = os.path.join(yb.repos._cachedir, targetid)
+            if os.path.isdir(cachedir):
+                shutil.rmtree(cachedir)
+                yb.setCacheDir()
+
+            for repo in yb.repos.listEnabled():
+                repo.disable()
+                repo.close()
+            yb.repos.repos[targetid].enable()
+
+            try:
+                yb.repos.doSetup()
+            except Exception as ex:
+                sys.stderr = old_stderr
+                log_error(str(ex))
+                return -1
+
+            try:
+                yb.repos.populateSack()
+            except Exception as ex:
+                sys.stderr = old_stderr
+                log_error(str(ex))
+                return -1
+
+            packages = yb.pkgSack.returnPackages()
+            retcode = 0
+            download = []
+
+            for package in packages:
+                rpmname = package.remote_url.rsplit("/", 1)[1]
+                pkgpath = os.path.join(pkgdir, rpmname)
+                if not os.path.isfile(pkgpath) or os.path.getsize(pkgpath) != package.size:
+                    log_info("%s will be downloaded" % rpmname)
+                    download.append(package)
+                else:
+                    log_debug("%s is already downloaded, skipping" % rpmname)
+
+            errors = yb.downloadPkgs(download)
+            for error in errors:
+                old_stderr.write("An error occured during download\n%s: %s" % (error, errors[error]))
+
+            for package in download:
+                downloadpath = package.localPkg()
+                pkgname = os.path.basename(downloadpath)
+                targetpath = os.path.join(pkgdir, pkgname)
+
+                if not os.path.isfile(downloadpath):
+                    # error message should be listed in errors
+                    continue
+
+                if os.path.isfile(targetpath):
+                    os.unlink(targetpath)
+
+                try:
+                    os.rename(downloadpath, targetpath)
+                except OSError as ex:
+                    if ex.errno != errno.EXDEV:
+                        raise
+
+                    shutil.copy2(downloadpath, targetpath)
+                    os.unlink(downloadpath)
+            # END YUM
+    finally:
+        sys.stderr = old_stderr
+        try:
+            os.unlink(yumtmp.name)
+            shutil.rmtree(yb.repos.repos[targetid].cachedir)
+        except Exception as ex:
+            log_error("Unable to clean up: %s." % ex)
+            return -1
+
+    return retcode
+
+def vercmp(ver1, ver2):
+    # ToDo: Involve epoch?
+    version, release = ver1.split("-", 1)
+    first = (None, version, release)
+    version, release = ver2.split("-", 1)
+    second = (None, version, release)
+
+    return rpm.labelCompare(first, second)
+
+def clean_rawhide_repo(release):
+    packages = {}
+    pkgdir = os.path.join(CONFIG["RepoDir"], release, "Packages")
+    for f in os.listdir(pkgdir):
+        if not f.endswith(".rpm"):
+            continue
+
+        pkgdata = parse_rpm_name(f)
+        if not pkgdata["name"]:
+            continue
+
+        ver = "%s-%s" % (pkgdata["version"], pkgdata["release"])
+
+        if not pkgdata["name"] in packages:
+            packages[pkgdata["name"]] = { ver: [f] }
+            continue
+
+        if ver in packages[pkgdata["name"]]:
+            packages[pkgdata["name"]][ver].append(f)
+            continue
+
+        packages[pkgdata["name"]][ver] = [f]
+
+    for package in packages:
+        pkgcnt = len(packages[package])
+        if pkgcnt > CONFIG["KeepRawhideLatest"]:
+            vers = sorted(packages[package].keys(), cmp=vercmp)
+            i = 0
+            for ver in vers:
+                for filename in packages[package][ver]:
+                    if i < pkgcnt - CONFIG["KeepRawhideLatest"]:
+                        log_info("Removing %s" % filename)
+                        os.unlink(os.path.join(pkgdir, filename))
+                i += 1
+
+if __name__ == "__main__":
+    # parse arguments
+    argparser = argparse.ArgumentParser(description="Retrace Server repository downloader")
+    argparser.add_argument("distribution", type=str, help="Distribution name")
+    argparser.add_argument("version", type=str, help="Release version")
+    argparser.add_argument("architecture", type=str, help="CPU architecture")
+    argparser.add_argument("-v", "--verbose", action="store_const",
+                           default=logging.INFO, const=logging.DEBUG)
+    args = argparser.parse_args()
+
+    logging.basicConfig(level=args.verbose)
+
+    distribution = args.distribution
+    version = args.version
+    arch = get_canon_arch(args.architecture)
+
+    # drop privilegies if possible
+    try:
+        gr = grp.getgrnam(TARGET_GROUP)
+        os.setgid(gr.gr_gid)
+        pw = pwd.getpwnam(TARGET_USER)
+        os.setuid(pw.pw_uid)
+        log_info("Privileges set to '%s:%s'." % (TARGET_USER, TARGET_GROUP))
+    except Exception as ex:
+        log_error("Unable to change privileges to '%s:%s'" % (TARGET_USER, TARGET_GROUP))
+        log_error(str(ex))
+        sys.exit(6)
+
+    # load plugin
+    plugin = None
+    for iplugin in PLUGINS:
+        if iplugin.distribution == distribution:
+            plugin = iplugin
+            break
+
+    if not plugin:
+        log_error("Unknown distribution: '%s'" % distribution)
+        sys.exit(1)
+
+    targetid = "%s-%s-%s" % (distribution, version, arch)
+    lockfile = "/tmp/retrace-reposync-lock-%s" % targetid
+
+    if os.path.isfile(lockfile):
+        log_error("Another process with repository download is running")
+        sys.exit(2)
+
+    # set lock
+    if not lock(lockfile):
+        log_error("Unable to set lock")
+        sys.exit(3)
+
+    null = open(os.devnull, "w")
+
+    try:
+        targetdir = os.path.join(CONFIG["RepoDir"], targetid)
+        pkgdir = os.path.join(targetdir, "Packages")
+
+        if not os.path.isdir(pkgdir):
+            os.makedirs(pkgdir)
+
+        for filename in os.listdir(targetdir):
+            if filename.endswith(".rpm"):
+                os.rename(os.path.join(targetdir, filename), os.path.join(pkgdir, filename))
+
+        globalyumcfg = ""
+        if hasattr(plugin, "yumcfg"):
+            globalyumcfg = plugin.yumcfg.replace("$ARCH", arch).replace("$VER", version)
+
+        i = 0
+        # run rsync
+        for repo in plugin.repos:
+            i += 1
+            retcode = -1
+            localyumcfg = ""
+            if isinstance(repo, tuple):
+                repo, localyumcfg = repo
+                localyumcfg = localyumcfg.replace("$ARCH", arch).replace("$VER", version)
+
+            for mirror in repo:
+                repourl = mirror.replace("$ARCH", arch).replace("$VER", version)
+                log_info("[%d / %d] Repo: %s" % (i, len(plugin.repos), repourl))
+                log_info("Downloading packages")
+                sys.stdout.flush()
+
+                if repourl.startswith("http://") or \
+                   repourl.startswith("https://") or \
+                   repourl.startswith("ftp://"):
+                    retcode = sync_using_yum(targetid, repourl, globalyumcfg, localyumcfg)
+                else:
+                    if repourl.startswith("rsync://"):
+                        files = [repourl]
+                    else:
+                        # folder in FS
+                        files = []
+                        try:
+                            for package in os.listdir(repourl):
+                                files.append(os.path.join(repourl, package))
+                        except Exception as ex:
+                            log_warn("Download failed: %s" % ex)
+                            log_info("Trying another mirror")
+                            continue
+
+                    retcode = call(["rsync", "-t"] + files + [pkgdir], stdout=null, stderr=null)
+
+                if retcode == 0:
+                    log_info("Download succeeded")
+                    break
+
+                log_warn("Download failed, trying another mirror")
+
+            if retcode != 0:
+                log_error("Download failed, no more mirrors to try")
+
+        if version.lower() == "rawhide":
+            log_info("Cleaning rawhide repo...")
+            clean_rawhide_repo(targetid)
+
+        # run createrepo
+        log_info("Running createrepo on '%s'..." % targetdir)
+        sys.stdout.flush()
+
+        cmd = ["createrepo", targetdir]
+        if CONFIG["UseCreaterepoUpdate"]:
+            cmd.append("--update")
+
+        # ToDo: Dirty!
+        # With newer version of createrepo the number of packages is limited
+        # by shell's maximum length of argument list. That's why it uses
+        # workers able to split the work and fit into the limit.
+        # 2 workers seem to be enough for Fedora right now, the number may
+        # need increasing in the future.
+        try:
+            import createrepo
+            if "RepoData" in createrepo.__dict__:
+                cmd.append("--workers=2")
+        except:
+            pass
+
+        retcode = call(cmd, stdout=null, stderr=null)
+    finally:
+        null.close()
+        unlock(lockfile)
+
+    if retcode != 0:
+        log_error("Failed")
+        sys.exit(4)
+
+    log_info("Repository synchronization finished successfully")
