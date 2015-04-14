@@ -93,6 +93,9 @@ if __name__ == "__main__":
     mycrawler.add_seeds(['http://debuginfo.centos.org'])
     rules = {'^http://debuginfo\.centos\.org(.*)$':['^http://debuginfo\.centos\.org/(.+)/$']}
     #rules = {'^http://debuginfo\.centos\.org/6(.*)$':['^(.+)/$']}
+    
+    # To-do, suse and ubuntu debuginfo package crawler
+    
     mycrawler.add_rules(rules)
     mycrawler.set_file_rule("^.+kernel-debuginfo-.+\.rpm$")
     mycrawler.start()
