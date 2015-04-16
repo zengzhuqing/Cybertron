@@ -17,7 +17,10 @@ Note: This document is based on the following versions at the time of this writi
 - Set SELinux to permissive. Edit /etc/selinux/config 
 SELINUX=permissive
 
-Make sure your setting.
+Make sure your setting. You should reboot to make your config effective, or
+you will just run setenforce 0. If you find that the file's mod is right for
+access, however, you are always told that Permission deny, you should notice
+that it may be caused by selinux.
 # getenforce
 Permissive
 
