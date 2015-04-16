@@ -4,7 +4,7 @@
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
     <link rel="icon" href="icons/favicon.ico">
-    <title>{title}</title>
+    <title>{{title}}</title>
     <!-- Bootstrap core CSS -->
     <link href="css/bootstrap.min.css" rel="stylesheet">
     <link href="css/bootstrap-theme.min.css" rel="stylesheet">
@@ -35,7 +35,7 @@
             <span class="icon-bar"></span>
             <span class="icon-bar"></span>
           </button>
-          <a class="navbar-brand" href="#">{sitename}</a>
+          <a class="navbar-brand" href="#">{{sitename}}</a>
         </div>
         <div id="navbar" class="navbar-collapse collapse">
           <form class="navbar-form navbar-right">
@@ -52,7 +52,7 @@
     </nav>
     <div class="container theme-showcase" role="main">
     <!--<h1>{sitename}</h1>-->
-    <form method="post" action="{create_custom_url}" id="custom">
+    <form method="post" action="{{create_custom_url}}" id="custom">
     <!--
       <div>
         <span class="formsubhead">Kernel version (e.g. <code>2.6.32-287.el6.x86_64</code>, empty to autodetect):</span> <input type="text" name="vra" />
@@ -62,7 +62,7 @@
      <div class="row">
          <h1 class="center">Create New Task</h1>
         <!--<span class="formhead">Custom core location:</span> -->
-        <div class="input-group">    
+        <div class="input-group col-xs-12 center">    
             <input type="text" class="form-control" name="custom_url" placeholder="Custom core location" required autofocus/></input>
             <div class="input-group-btn">
                 <button type="submit" class="btn btn-success">Create</button>
@@ -96,31 +96,31 @@
         <div id="running">
           <table class="table table-striped">
             <tr>
-              <th colspan="5" class="tablename">{running_str}</th>
+              <th colspan="5" class="tablename">{{running_str}}</th>
             </tr>
             <tr>
-              <th class="taskid">{taskid_str}</th>
-              <th class="caseno">{caseno_str}</th>
-              <th>{files_str}</th>
-              <th class="timestamp">{starttime_str}</th>
-              <th class="status">{status_str}</th>
+              <th class="taskid">{{taskid_str}}</th>
+              <th class="caseno">{{caseno_str}}</th>
+              <th>{{files_str}}</th>
+              <th class="timestamp">{{starttime_str}}</th>
+              <th class="status">{{status_str}}</th>
             </tr>
-            {running}
+            {{running}}
           </table>
         </div>
         
         <div id="finished">
           <table class="table table-striped">
             <tr>
-              <th colspan="4" class="tablename">{finished_str}</th>
+              <th colspan="4" class="tablename">{{finished_str}}</th>
             </tr>
             <tr>
-              <th class="taskid">{taskid_str}</th>
-              <th class="caseno">{caseno_str}</th>
-              <th>{files_str}</th>
-              <th class="timestamp">{finishtime_str}</th>
+              <th class="taskid">{{taskid_str}}</th>
+              <th class="caseno">{{caseno_str}}</th>
+              <th>{{files_str}}</th>
+              <th class="timestamp">{{finishtime_str}}</th>
             </tr>
-            {finished}
+            {{finished}}
           </table>
       </div>
     </div>

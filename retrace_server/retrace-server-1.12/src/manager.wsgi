@@ -5,6 +5,8 @@ import re
 import urllib
 import urlparse
 from retrace import *
+from jinja2 import Environment, PackageLoader
+from jinja2.loaders import FileSystemLoader
 
 MANAGER_URL_PARSER = re.compile("^(.*/manager)(/(([^/]+)(/(__custom__|start|backtrace|savenotes|caseno|notify|delete(/(sure/?)?)?|misc/([^/]+)/?)?)?)?)?$")
 
@@ -34,6 +36,9 @@ def application(environ, start_response):
 
     _ = parse_http_gettext("%s" % request.accept_language,
                            "%s" % request.accept_charset)
+    
+    env = Environment(loader=FileSystemLoader('/usr/share/retrace-server/templates'))
+    templ = env.get_template('manager.xhtml')
 
     if not CONFIG["AllowTaskManager"]:
         return response(start_response, "403 Forbidden", _("Task manager was disabled by the server administrator"))
@@ -262,8 +267,8 @@ def application(environ, start_response):
             else:
                 return response(start_response, "404 Not Found", _("There is no such task"))
 
-        with open("/usr/share/retrace-server/managertask.xhtml", "r") as f:
-            output = f.read(1 << 20) # 1MB
+        env = Environment(loader=FileSystemLoader('/usr/share/retrace-server/templates'))
+        templ = env.get_template('managertask.xhtml')
 
         start = ""
         if not ftptask and task.has_status():
@@ -426,33 +431,36 @@ def application(environ, start_response):
                      "  </td>" \
                      "</tr>" % (request.path_url.rstrip("/"), currentnotify)
 
-        output = output.replace("{title}", title)
-        output = output.replace("{taskno}", taskno)
-        output = output.replace("{str_type}", _("Type:"))
-        output = output.replace("{type}", tasktype)
-        output = output.replace("{str_status}", _("Status:"))
-        output = output.replace("{status}", status)
-        output = output.replace("{start}", start)
-        output = output.replace("{back}", back)
-        output = output.replace("{backtrace}", backtrace)
-        output = output.replace("{backtracewindow}", backtracewindow)
-        output = output.replace("{testwindow}", testwindow)
-        output = output.replace("{caseno}", caseno)
-        output = output.replace("{notify}", notify)
-        output = output.replace("{delete}", delete)
-        output = output.replace("{delete_yesno}", delete_yesno)
-        output = output.replace("{interactive}", interactive)
-        output = output.replace("{misc}", misc)
-        output = output.replace("{notes}", notes)
-        output = output.replace("{unknownext}", unknownext)
-        output = output.replace("{downloaded}", downloaded)
-        output = output.replace("{starttime}", starttime)
-        output = output.replace("{finishtime}", finishtime)
-        return response(start_response, "200 OK", output, [("Content-Type", "text/html")])
+        replace = {}
+        replace['title'] = title
+        replace['taskno'] = taskno
+        replace['str_type'] = _("Type:")
+        replace['type'] = tasktype
+        replace['str_status'] = _("Status:")
+        replace['status'] = status 
+        replace['start'] = start
+        replace['back'] = back
+        replace['backtrace'] = backtrace
+        replace['backtracewindow'] = backtracewindow
+        replace['caseno'] = caseno
+        replace['notify'] = notify
+        replace['delete'] = delete
+        replace['delete_yesno'] = delete_yesno
+        replace['interactive'] = interactive
+        replace['misc'] = misc
+        replace['notes'] = notes
+        replace['unknownext'] = unknownext
+        replace['downloaded'] = downloaded
+        replace['starttime'] = starttime
+        replace['finishtime'] = finishtime
+        replace['testwindow'] = testwindow
+
+        output = templ.render(**replace)  
+        return response(start_response, "200 OK", str(output), [("Content-Type", "text/html")])
 
     # menu
-    with open("/usr/share/retrace-server/manager.xhtml") as f:
-        output = f.read(1 << 20) # 1MB
+    env = Environment(loader=FileSystemLoader('/usr/share/retrace-server/templates'))
+    templ = env.get_template('manager.xhtml')
 
     title = _("Retrace Server Task Manager")
     sitename = _("Retrace Server Task Manager")
@@ -604,21 +612,25 @@ def application(environ, start_response):
 
     custom_url = "%s/__custom__" % match.group(1)
 
-    output = output.replace("{title}", title)
-    output = output.replace("{sitename}", sitename)
-    output = output.replace("{available_str}", available_str)
-    output = output.replace("{running_str}", running_str)
-    output = output.replace("{finished_str}", finished_str)
-    output = output.replace("{taskid_str}", taskid_str)
-    output = output.replace("{caseno_str}", caseno_str)
-    output = output.replace("{files_str}", files_str)
-    output = output.replace("{starttime_str}", starttime_str)
-    output = output.replace("{finishtime_str}", finishtime_str)
-    output = output.replace("{status_str}", status_str)
-    output = output.replace("{create_custom_url}", custom_url)
-    # spaces to keep the XML nicely aligned
-    output = output.replace("{available}", "\n            ".join(available))
-    output = output.replace("{running}", "\n            ".join(running))
-    output = output.replace("{finished}", "\n            ".join(finished))
+    replace = {}
 
-    return response(start_response, "200 OK", output, [("Content-Type", "text/html")])
+    replace['title"'] = title
+    replace['sitename'] = sitename
+    replace['available_str'] = available_str
+    replace['running_str'] = running_str
+    replace['finished_str'] = finished_str
+    replace['taskid_str'] = taskid_str
+    replace['caseno_str'] = caseno_str
+    replace['files_str'] = files_str
+    replace['starttime_str'] = starttime_str
+    replace['finishtime_str'] = finishtime_str
+    replace['status_str'] = status_str
+    replace['create_custom_url'] = custom_url
+    # spaces to keep the XML nicely aligned
+    replace['available'] = "\n            ".join(available)
+    replace['running'] = "\n            ".join(running)
+    replace['finished'] = "\n            ".join(finished)
+
+    output = templ.render(**replace)
+
+    return response(start_response, "200 OK", str(output), [("Content-Type", "text/html")])
