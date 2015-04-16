@@ -6,6 +6,9 @@ from retrace import *
 from plugins import *
 import json
 
+#Fixme 
+#better we define a Parser base class and implementated with different parsers, like kernel oops/kernel hang/kernel warning...
+
 class RetraceLogParser:
     
     def __init__(self, task):
@@ -87,6 +90,9 @@ class RetraceLogParser:
     def get_call_trace(self):
         return self.call_trace 
  
+#Fixme
+#the same with parser, a search base class is needed.
+
 class RedHatKBSearch:
 
     def __init__(self, parser):
