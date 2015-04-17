@@ -4,33 +4,13 @@
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
     <title>{title}</title>
+    <!-- Bootstrap core CSS -->
+    <link href="css/bootstrap.min.css" rel="stylesheet">
+    <link href="css/bootstrap-theme.min.css" rel="stylesheet">
+    <link href="css/theme.css" rel="stylesheet">
     <style type="text/css">
-      body {
-        font-family: sans-serif;
-        font-size: 12px;
-      }
-
       code {
         font-family: monospace;
-        font-weight: bold;
-      }
-
-      table {
-        border: 0;
-        border-collapse: collapse;
-        margin: 20px 0;
-      }
-
-      table td {
-        border: 0;
-        padding: 10px 4px;
-      }
-
-      table th {
-        text-align: left;
-        border: 0;
-        padding: 10px 4px;
-        width: 200px;
       }
 
       a:link {
@@ -53,25 +33,10 @@
         text-decoration: underline;
       }
 
-      h1 {
-        font-size: 20px;
-      }
-
-      h2 {
-        font-size: 16px;
-      }
-
-      input {
-        border: 1px solid black;
-        font-size: 12px;
-        margin: 10px 4px;
-        vertical-align: middle;
-        padding: 4px;
-      }
-
-      input.button {
-        margin: 10px 0px;
-        padding: 4px 10px;
+    h1 {
+        font-size: 30px;
+        text-align: left;
+        margin-bottom: 20px;
       }
 
       textarea.backtrace {
@@ -79,23 +44,36 @@
         height: 400px;
         padding: 6px;
       }
-
-      textarea.notes {
-        height: 200px;
-        width: 600px;
-      }
-
-      form.notes {
-        float: right;
-        width: 610px;
-        margin-right: 100px;
-      }
     </style>
   </head>
   <body>
-    <h1>{taskno}</h1>
-    {notes}
-    <table>
+    <nav class="navbar navbar-inverse navbar-fixed-top">
+      <div class="container">
+        <div class="navbar-header">
+          <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#navbar" aria-expanded="false" aria-controls="navbar">
+            <span class="sr-only">Toggle navigation</span>
+            <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
+          </button>
+          <a class="navbar-brand" href="#">{taskno}</a>
+        </div>
+        <div id="navbar" class="navbar-collapse collapse">
+          <form class="navbar-form navbar-right">
+            <div class="form-group">
+              <input type="text" placeholder="Email" class="form-control">
+            </div>
+            <div class="form-group">
+              <input type="password" placeholder="Password" class="form-control">
+            </div>
+            <button type="submit" class="btn btn-success">Sign in</button>
+          </form>
+        </div><!--/.navbar-collapse -->
+      </div>
+    </nav>
+<!--    {notes}-->
+    <div class="container theme-showcase" role="main">
+    <table class="table table-striped">
       {back}
       <tr>
         <th>{str_type}</th>
@@ -120,5 +98,6 @@
     </table>
     {backtracewindow}
     {testwindow}
+    </div>
   </body>
 </html>

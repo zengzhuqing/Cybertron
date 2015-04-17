@@ -300,7 +300,7 @@ def application(environ, start_response):
         if not ftptask:
             if task.has_backtrace():
                 backtrace = "<tr><td colspan=\"2\"><a href=\"%s/backtrace\">%s</a></td></tr>" % (request.path_url.rstrip("/"), _("Show raw backtrace"))
-                backtracewindow = "<h2>Backtrace</h2><textarea class=\"backtrace\">%s</textarea>" % task.get_backtrace()
+                backtracewindow = "<h2>Kernel log</h2><textarea class=\"backtrace\">%s</textarea>" % task.get_backtrace()
                 if task.get_type() in [TASK_RETRACE_INTERACTIVE, TASK_VMCORE_INTERACTIVE]:
                     if task.get_type() == TASK_VMCORE_INTERACTIVE:
                         debugger = "crash"
@@ -316,14 +316,11 @@ def application(environ, start_response):
                                  _("see"), _("for further information about cmdline flags"))
 
                 #TODO: change to a good name
-                testwindow = "<h2>RedHat KB Search Results</h2>"
-		if task.get_matched() != None:
-                    for i in task.get_matched().split('\n')[0:-1]:
-                        item = i.split('@#$%') 
-                        cur = "<p><a href=%s>%s</a></p>" %(item[1], item[0])
-                        testwindow += cur
-		else:
-	            testwindow += "<p>No matched KBs!</p>"	
+                testwindow = "<h2>RedHat KB match</h2>"
+                for i in task.get_matched().split('\n')[0:-1]:
+                    item = i.split('@#$%') 
+                    cur = "<p><a href=%s>%s</a></p>" %(item[1], item[0])
+                    testwindow += cur
                     
             elif task.has_log():
                 backtracewindow = "<h2>Log:</h2><textarea class=\"backtrace\">%s</textarea>" % task.get_log()
