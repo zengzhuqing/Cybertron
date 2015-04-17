@@ -7,8 +7,8 @@ import config
 from threading import Thread
 
 begin = 0
-end = 100000
-work_size = end / config.THREAD_NUM
+end = 2000000
+work_size = (end - bein) / config.THREAD_NUM
  
 class RedHatCrawler():
 

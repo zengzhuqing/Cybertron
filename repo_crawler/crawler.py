@@ -88,14 +88,33 @@ class Crawler():
             print "sleep",i,"of",n
 
 if __name__ == "__main__":
-    mycrawler = Crawler()
+    # Centos repo crawler
+    centos_crawler = Crawler()
     # Be careful: if seed is a dir, make sure you add / in the end
-    mycrawler.add_seeds(['http://debuginfo.centos.org'])
+    centos_crawler.add_seeds(['http://debuginfo.centos.org'])
     rules = {'^http://debuginfo\.centos\.org(.*)$':['^http://debuginfo\.centos\.org/(.+)/$']}
     #rules = {'^http://debuginfo\.centos\.org/6(.*)$':['^(.+)/$']}
     
-    # To-do, suse and ubuntu debuginfo package crawler
+    # To-test, suse and ubuntu debuginfo package crawler
     
-    mycrawler.add_rules(rules)
-    mycrawler.set_file_rule("^.+kernel-debuginfo-.+\.rpm$")
-    mycrawler.start()
+    centos_crawler.add_rules(rules)
+    centos_crawler.set_file_rule("^.+kernel-debuginfo-.+\.rpm$")
+    centos_crawler.start()
+    
+    # OpenSuse repo crawler
+    opensuse_crawler = Crawler()
+    opensuse_crawler.add_seeds(['http://ftp5.gwdg.de/pub/opensuse/discontinued/debug/'])
+    rules = {'^http://ftp5\.gwdg\.de/pub/opensuse/discontinued/debug/(.*)$':['^http://ftp5\.gwdg\.de/pub/opensuse/discontinued/debug/(.+)/$']}
+    
+    opensuse_crawler.add_rules(rules)
+    opensuse_crawler.set_file_rule("^(.+)kernel-default-debuginfo-(.+)\.rpm$")
+    opensuse_crawler.start()
+    
+    # Ubuntu repo crawler
+    ubuntu_crawler = Crawler()
+    ubuntu_crawler.add_seeds(['http://ddebs.ubuntu.com/pool/main/l/linux/'])
+    rules = {'^http://ddebs\.ubuntu\.com/pool/main/l/linux/(.*)$':['^http://ddebs\.ubuntu\.com/pool/main/l/linux/(.+)/$']}
+    
+    ubuntu_crawler.add_rules(rules)
+    ubuntu_crawler.set_file_rule("^linux-image-(.+)\.ddeb$")
+    ubuntu_crawler.start()
