@@ -3,174 +3,22 @@
 <html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <link rel="icon" href="icons/favicon.ico">
     <title>{title}</title>
+    <!-- Bootstrap core CSS -->
+    <link href="css/bootstrap.min.css" rel="stylesheet">
+    <link href="css/bootstrap-theme.min.css" rel="stylesheet">
+    <link href="css/theme.css" rel="stylesheet">
     <style type="text/css">
-      #left {
-        width: 36%;
-        float: left;
-      }
-
-      #right {
-        width: 63%;
-        float: right;
-      }
-
-      #available {
-
-      }
-
-      #finished {
-
-      }
-
-      #running {
-        margin-bottom: 20px;
-      }
-
-      #filter
-      {
-        width: 100%;
-        text-align: center;
-        margin-bottom: 30px;
-      }
-
-      #custom
-      {
-        width: 100%;
-        text-align: center;
-        margin-bottom: 20px;
-      }
-
-      #main
-      {
-        display: inline-block;
-        margin-bottom: 20px;
-        width: 100%;
-      }
-
-      .submit
-      {
-        width: 100px;
-      }
-
-      .success
-      {
-        background-color: #aaddaa;
-      }
-
-      .fail
-      {
-        background-color: #ddaaaa;
-      }
-
-      .formhead
-      {
-        font-weight: bold;
-        font-size: 14px;
-      }
-
-      .formsubhead
-      {
-        font-size: 14px;
-      }
-
       .center
       {
         text-align: center;
       }
-
-      input.url
-      {
-        width: 800px;
-        font-family: monospace;
-      }
-
-      input
-      {
-        border: 1px solid black;
-        padding: 4px;
-        width: 250px;
-        margin: 4px;
-      }
-
-      input.checkbox
-      {
-        width: auto;
-        margin-left: 40px;
-      }
-
-      a:link {
-        color: blue;
-        text-decoration: none;
-      }
-
-      a:visited {
-        color: blue;
-        text-decoration: none;
-      }
-
-      a:active {
-        color: blue;
-        text-decoration: none;
-      }
-
-      a:hover {
-        color: blue;
-        text-decoration: underline;
-      }
-
-      body {
-        font-family: sans-serif;
-        font-size: 11px;
-      }
-
-      table {
-        border: 1px solid black;
-        border-collapse: collapse;
-        width: 100%;
-      }
-
-      table td {
-        border: 1px solid black;
-        padding: 2px 4px;
-      }
-
-      table th.taskid
-      {
-        width: 56px;
-      }
-
-      table th.status
-      {
-        width: 320px;
-      }
-
-      table th.timestamp
-      {
-        width: 110px;
-      }
-
-      table th.caseno
-      {
-        width: 56px;
-      }
-
-      table th {
-        border: 1px solid black;
-        background-color: #ccc;
-        padding: 6px;
-      }
-
-      table th.tablename {
-        font-size: 14px;
-      }
-
-      h1 {
-        font-size: 20px;
-        text-align: center;
+    h1 {
+        font-size: 30px;
+        text-align: left;
         margin-bottom: 20px;
       }
-
       code
       {
         font-family: monospace;
@@ -178,23 +26,53 @@
     </style>
   </head>
   <body>
-    <h1>{sitename}</h1>
-    <form method="get" id="filter">
-      <input type="text" name="filter" />
-      <input type="submit" value="Filter" class="submit" />
-    </form>
+    <nav class="navbar navbar-inverse navbar-fixed-top">
+      <div class="container">
+        <div class="navbar-header">
+          <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#navbar" aria-expanded="false" aria-controls="navbar">
+            <span class="sr-only">Toggle navigation</span>
+            <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
+          </button>
+          <a class="navbar-brand" href="#">{sitename}</a>
+        </div>
+        <div id="navbar" class="navbar-collapse collapse">
+          <form class="navbar-form navbar-right">
+            <div class="form-group">
+              <input type="text" placeholder="Email" class="form-control">
+            </div>
+            <div class="form-group">
+              <input type="password" placeholder="Password" class="form-control">
+            </div>
+            <button type="submit" class="btn btn-success">Sign in</button>
+          </form>
+        </div><!--/.navbar-collapse -->
+      </div>
+    </nav>
+    <div class="container theme-showcase" role="main">
+    <!--<h1>{sitename}</h1>-->
     <form method="post" action="{create_custom_url}" id="custom">
+    <!--
       <div>
         <span class="formsubhead">Kernel version (e.g. <code>2.6.32-287.el6.x86_64</code>, empty to autodetect):</span> <input type="text" name="vra" />
         <input type="checkbox" checked="checked" name="debug" class="checkbox" /><span class="formsubhead"> Be more verbose in case of error</span>
       </div>
-      <div>
-        <span class="formhead">Custom core location:</span> <input type="text" name="custom_url" class="url" />
-        <input type="submit" value="Create" class="submit" />
-        <div class="center">Any URL that <code>wget</code> can download or a local path (<code>file:///foo/bar</code> or just <code>/foo/bar</code>)</div>
+      -->
+     <div class="row">
+         <h1 class="center">Create New Task</h1>
+        <!--<span class="formhead">Custom core location:</span> -->
+        <div class="input-group">    
+            <input type="text" class="form-control" name="custom_url" placeholder="Custom core location" required autofocus/></input>
+            <div class="input-group-btn">
+                <button type="submit" class="btn btn-success">Create</button>
+            </div>
+        </div>
+        <div class="col-xs-12 center">Any URL that <code>wget</code> can download or a local path (<code>file:///foo/bar</code> or just <code>/foo/bar</code>)
+        </div>
       </div>
     </form>
-    <div id="main">
+    <!--
       <div id="left">
         <div id="available">
           <table>
@@ -205,9 +83,18 @@
           </table>
         </div>
       </div>
-      <div id="right">
+      -->
+      <div class="page-header">
+        </div>
+        <h1>All tasks</h1>
+        <!--
+        <form method="get" id="filter">
+            <input type="text" name="filter" />
+            <input type="submit" value="Filter" class="submit" />
+        </form>
+        -->
         <div id="running">
-          <table>
+          <table class="table table-striped">
             <tr>
               <th colspan="5" class="tablename">{running_str}</th>
             </tr>
@@ -221,8 +108,9 @@
             {running}
           </table>
         </div>
+        
         <div id="finished">
-          <table>
+          <table class="table table-striped">
             <tr>
               <th colspan="4" class="tablename">{finished_str}</th>
             </tr>
@@ -234,7 +122,6 @@
             </tr>
             {finished}
           </table>
-        </div>
       </div>
     </div>
   </body>

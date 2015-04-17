@@ -1,4 +1,4 @@
-SUBDIRS = config gpg lib plugins
+SUBDIRS = config gpg lib plugins css js
 
 MAN_TXT = \
     retrace-server-cleanup.txt \
