@@ -1,0 +1,149 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <title>{{title}}</title>
+    <!-- Bootstrap core CSS -->
+    <link href="static/css/bootstrap.min.css" rel="stylesheet">
+    <link href="static/css/bootstrap-theme.min.css" rel="stylesheet">
+    <link href="static/css/theme.css" rel="stylesheet">
+    <style type="text/css">
+      code {
+        font-family: monospace;
+      }
+      h1 {
+        font-size: 30px;
+        text-align: left;
+        margin-bottom: 20px;
+      }
+
+      textarea.backtrace {
+        width: 90%;
+        height: 400px;
+        padding: 6px;
+      }
+    </style>
+  </head>
+  <body>
+    <nav class="navbar navbar-inverse navbar-fixed-top">
+      <div class="container">
+        <div class="navbar-header">
+          <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#navbar" aria-expanded="false" aria-controls="navbar">
+            <span class="sr-only">Toggle navigation</span>
+            <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
+          </button>
+            <a class="navbar-brand" href="/">{{taskno}} {% if session.username %}- User: {{session.username}} {% endif %}</a>
+        </div>
+        <div id="navbar" class="navbar-collapse collapse">
+            {% if not session.logged_in %}
+          <form method="post" action="{{ url_for('Login') }}" class="navbar-form navbar-right">
+            <div class="form-group">
+              <input type="text" placeholder="Email" name="BG_account" class="form-control">@vmware.com</input>
+            </div>
+            <div class="form-group">
+              <input type="password" placeholder="Password" name = "BG_password"class="form-control">
+            </div>
+             <input type="hidden" name="taskid" value={{taskid}} />
+            <button type="submit" class="btn btn-success">Sign in</button>
+          </form>
+        </div><!--/.navbar-collapse -->
+      </div>
+      {% else %}
+      <form method = "post" action = "{{url_for('Logout')}}" class="navbar-form navbar-right">
+      <!--
+        <a href="https://bugzilla.eng.vmware.com/enter_bug.cgi?product=CPD-Serviceability&category=ESX-Platform&component=cpdtools&found_in_product_name=CPD-Serviceability&found_in_version_name=1.0&assigned_to=zengz&bug_severity=serious&priority=P2" target="_blank"  class="btn btn-primary">Report a bug</a>
+    -->    
+    <a href="https://vmwaresearch.vmware.com/search?proxystylesheet=vmlinksearch_frontend&getfields=*&site=People&q={{session.username}}@vmware.com" class="btn btn-info">Profile</a>
+       <!--<form method="post" action="{{ url_for('Logout') }}" >-->
+       <input type="hidden" name="taskid" value={{taskid}} />
+        <button type="summit" class="btn btn-success">Logout</button>
+      </form>
+      {% endif %}
+    </nav>
+<!--    {{notes}}-->
+    <div class="container theme-showcase" role="main">
+    <table class="table table-striped">
+      <tr><td colspan="2"><a href="{{url_for('Index')}}">{{backstr}}</a></td></tr>
+      <tr>
+        <th>{{str_type}}</th>
+        <td>{{type}}</td>
+      </tr>
+      <tr>
+        <th>{{str_status}}</th>
+        <td>{{status}}</td>
+      </tr>
+      <tr>
+        <th>Started:</th>
+        <td>{{starttime}}</td>
+      </tr>
+      <tr>
+        <th>Finished:</th>
+        <td>{{finishtime}}</td>
+      </tr>
+      <tr>
+        <th>Downloaded resources:</th>
+        <td>{{downloaded}}</td>
+      </tr>
+      <tr>
+        <th>{{misc}}</th>
+         <td>
+         {% for item  in misclist %}
+            {% if loop.last %}
+            <a href="{{url_for("Index")}}{{taskid}}/misc/{{item}}">{{item}}</a>
+            {% else %}
+            <a href="{{url_for("Index")}}{{taskid}}/misc/{{item}}">{{item}}</a>,
+            {% endif %}
+         {% endfor %}
+         </td>
+      </tr>
+      <tr>
+        <th>E-mail notification:</th>
+        <td>
+            {% if not session.logged_in %}
+            <form method="post" action="{{url_for("Index")}}{{taskid}}/updatenotify">
+                <input type="text" name="notify" value="{{currentnotify}}" />
+                <input type="submit" value="Update e-mail(s)" class="button" />
+            </form>
+            {% else %}
+               {{currentnotify}} 
+            {% endif %}
+        </td>
+      </tr>
+      <tr>
+         <th>Case no.:</th>
+         <td>
+            <form method="post" action="{{url_for("Index")}}{{taskid}}/updatecaseno">
+                <input type="text" name="caseno" value="{{currentcaseno}}" />
+                <input type="submit" value="Update case no." class="button" />
+            </form>
+         </td>
+      </tr>
+      {{unknownext}}
+      <tr><td colspan="2">This is an interactive task</td></tr>
+      <tr><td colspan="2">You can jump to the chrooted shell with:<code>retrace-server-interact {{taskid}} shell</code></td></tr>
+      <tr><td colspan="2">You can jump directly to the debugger with: <code>retrace-server-interact {{taskid}} {{debuguer}}</code></td></tr>
+      <tr><td colspan="2">See <code>man retrace-server-interact</code> for further information about cmdline flags</td></tr>
+    {% if kernellog_title %}
+      <tr><td colspan="2"><a href="{{url_for("Index")}}{{taskid}}/kernellog">Show raw kernel log</a></td></tr>
+    {% endif %}
+      <tr><td colspan="2"><a href="{{url_for("Index")}}{{taskid}}/delete">Delete task</a></td></tr>
+    </table>
+    {% if log_title %}
+    <h2>{{log_title}}</h2>
+    <textarea class="backtrace">{{log_content}}</textarea>
+    {% endif %}
+    {% if kernellog_title %}
+    <h2>{{kernellog_title}}</h2>
+    <textarea class="backtrace">{{kernellog_content}}</textarea>
+    <h2>RedHat KB match</h2>
+    {% for item in rhkb_matched %}
+        <p><a href={{item[0]}}>{{item[1]}}</a></p>
+    {% endfor %} 
+    {% endif %}
+     
+    </div>
+  </body>
+</html>

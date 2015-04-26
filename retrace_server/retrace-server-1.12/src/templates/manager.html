@@ -1,0 +1,156 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <link rel="icon" href="static/icons/favicon.ico">
+    <title>{{title}}</title>
+    <!-- Bootstrap core CSS -->
+    <link href="static/css/bootstrap.min.css" rel="stylesheet">
+    <link href="static/css/bootstrap-theme.min.css" rel="stylesheet">
+    <link href="static/css/theme.css" rel="stylesheet">
+    <style type="text/css">
+      .center
+      {
+        text-align: center;
+      }
+    h1 {
+        font-size: 30px;
+        text-align: left;
+        margin-bottom: 20px;
+      }
+      code
+      {
+        font-family: monospace;
+      }
+    </style>
+  </head>
+  <body>
+    <nav class="navbar navbar-inverse navbar-fixed-top">
+      <div class="container">
+        <div class="navbar-header">
+          <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#navbar" aria-expanded="false" aria-controls="navbar">
+            <span class="sr-only">Toggle navigation</span>
+            <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
+          </button>
+            <a class="navbar-brand" href="/">{{sitename}} {% if session.username %}- User: {{session.username}} {% endif %}</a>
+        </div>
+        <div id="navbar" class="navbar-collapse collapse">
+            {% if not session.logged_in %}
+          <form method="post" action="{{ url_for('Login') }}" class="navbar-form navbar-right">
+            <div class="form-group">
+              <input type="text" placeholder="Email" name="BG_account" class="form-control">@vmware.com</input>
+            </div>
+            <div class="form-group">
+              <input type="password" placeholder="Password" name = "BG_password"class="form-control">
+            </div>
+            <button type="submit" class="btn btn-success">Sign in</button>
+          </form>
+        </div><!--/.navbar-collapse -->
+      </div>
+      {% else %}
+      <form method = "post" action = "{{url_for('Logout')}}" class="navbar-form navbar-right">
+      <!---
+        <a href="https://bugzilla.eng.vmware.com/enter_bug.cgi?product=CPD-Serviceability&category=ESX-Platform&component=cpdtools&found_in_product_name=CPD-Serviceability&found_in_version_name=1.0&assigned_to=zengz&bug_severity=serious&priority=P2" target="_blank"  class="btn btn-primary">Report a bug</a>
+    -->    
+    <a href="https://vmwaresearch.vmware.com/search?proxystylesheet=vmlinksearch_frontend&getfields=*&site=People&q={{session.username}}@vmware.com" class="btn btn-info">Profile</a>
+        <button type="summit" class="btn btn-success">Logout</button>
+      </form>
+      {% endif %}
+    </nav>
+    <div class="container theme-showcase" role="main">
+    <!--<h1>{sitename}</h1>-->
+    <form method="post" action="{{ url_for('Create') }}" id="custom">
+    <!--
+      <div>
+        <span class="formsubhead">Kernel version (e.g. <code>2.6.32-287.el6.x86_64</code>, empty to autodetect):</span> <input type="text" name="vra" />
+        <input type="checkbox" checked="checked" name="debug" class="checkbox" /><span class="formsubhead"> Be more verbose in case of error</span>
+      </div>
+      -->
+     <div class="row">
+         <h1 class="center">Create New Task</h1>
+        <!--<span class="formhead">Custom core location:</span> -->
+        <div class="input-group col-xs-12 center">    
+            <input type="text" class="form-control" name="custom_url" placeholder="Custom core location" required autofocus/></input>
+            <div class="input-group-btn">
+                <button type="submit" class="btn btn-success">Create</button>
+            </div>
+        </div>
+        <div class="col-xs-12 center">Any URL that <code>wget</code> can download or a local path (<code>file:///foo/bar</code> or just <code>/foo/bar</code>)
+        </div>
+      </div>
+    </form>
+    <!--
+      <div id="left">
+        <div id="available">
+          <table>
+            <tr>
+              <th class="tablename">{available_str}</th>
+            </tr>
+            {available}
+          </table>
+        </div>
+      </div>
+      -->
+      <div class="page-header">
+        </div>
+        <h1>All tasks</h1>
+        <!--
+        <form method="get" id="filter">
+            <input type="text" name="filter" />
+            <input type="submit" value="Filter" class="submit" />
+        </form>
+        -->
+        <div id="running">
+          <table class="table table-striped">
+            <tr>
+              <th colspan="5" class="tablename">{{running_str}}</th>
+            </tr>
+            <tr>
+              <th class="taskid">{{taskid_str}}</th>
+              <th class="caseno">{{caseno_str}}</th>
+              <th>{{files_str}}</th>
+              <th class="timestamp">{{starttime_str}}</th>
+              <th class="status">{{status_str}}</th>
+            </tr>
+           {% for tool in running %}
+            <tr>
+	    <td class="taskid"> 
+            	<a href="{{ url_for('Index') }}{{ tool["taskid"]}}">{{tool["taskid"]}}</a> 
+            </td>
+            <td>{{ tool["caseno"] }}</td> 
+            <td>{{ tool["files"] }}</td> 
+            <td>{{ tool["starttime"] }}</td>
+            <td>{{ tool["status"] }}</td>
+            </tr> 
+           {% endfor %}
+          </table>
+        </div>
+        <div id="finished">
+          <table class="table table-striped">
+            <tr>
+              <th colspan="4" class="tablename">{{finished_str}}</th>
+            </tr>
+            <tr>
+              <th class="taskid">{{taskid_str}}</th>
+              <th class="caseno">{{caseno_str}}</th>
+              <th>{{files_str}}</th>
+              <th class="timestamp">{{finishtime_str}}</th>
+            </tr>
+	   {% for tool in finish %}
+            <tr class="{{ tool["status"] }}"> 
+            <td class="taskid"> 
+            	<a href="{{ tool["baseurl"] }}{{ tool["taskid"]}}">{{tool["taskid"]}}</a> 
+            </td>
+            <td>{{ tool["caseno"] }}</td> 
+            <td>{{ tool["files"] }}</td> 
+            <td>{{ tool["finishtime"] }}</td>
+            </tr> 
+           {% endfor %}
+          </table>
+      </div>
+    </div>
+  </body>
+</html>
