@@ -486,6 +486,9 @@ def taskinfo(task_id):
         currentnotify = ""
         if "logged_in" in session and session["logged_in"]:
             currentnotify = "%s@vmware.com" %(session["username"])
+            notify_list = []
+            notify_list.append(currentnotify)
+            task.set_notify(notify_list) 
         elif task.has_notify():
             currentnotify = ", ".join(task.get_notify()) 
 
