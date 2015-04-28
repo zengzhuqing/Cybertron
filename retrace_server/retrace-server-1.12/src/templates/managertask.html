@@ -102,14 +102,10 @@
       <tr>
         <th>E-mail notification:</th>
         <td>
-            {% if not session.logged_in %}
             <form method="post" action="{{url_for("Index")}}{{taskid}}/updatenotify">
                 <input type="text" name="notify" value="{{currentnotify}}" />
                 <input type="submit" value="Update e-mail(s)" class="button" />
             </form>
-            {% else %}
-               {{currentnotify}} 
-            {% endif %}
         </td>
       </tr>
       <tr>

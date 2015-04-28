@@ -174,6 +174,13 @@ def Start(task_id):
         else:
             return "There is no such task B"
 
+    # Set default notification email to the login user's email
+    if "logged_in" in session and session["logged_in"]:
+        notify_list = []
+        email = "%s@vmware.com" %(session["username"])
+        notify_list.append(email)
+        task.set_notify(notify_list) 
+
     if ftptask:
         try:
             task = RetraceTask()
@@ -485,13 +492,7 @@ def taskinfo(task_id):
     notify = ""
     if not ftptask:
         currentnotify = ""
-        # if-else can be removed
-        if "logged_in" in session and session["logged_in"]:
-            currentnotify = "%s@vmware.com" %(session["username"])
-            notify_list = []
-            notify_list.append(currentnotify)
-            task.set_notify(notify_list) 
-        elif task.has_notify():
+        if task.has_notify():
             currentnotify = ", ".join(task.get_notify()) 
 
     replace = {}
