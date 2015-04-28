@@ -209,8 +209,9 @@ def Start(task_id):
         kernelver = str(kernelver)
         arch = kernelver.arch
 
-    if "notify" in get:
-        task.set_notify(filter(None, set(n.strip() for n in get["notify"][0].replace(";", ",").split(","))))
+    #if "notify" in get:
+    #    task.set_notify(filter(None, set(n.strip() for n in get["notify"][0].replace(";", ",").split(","))))
+    task.set_notify("%s@vmware.com" %(session["username"]))
 
     task.start(debug=debug, kernelver=kernelver, arch=arch)
 
@@ -484,6 +485,7 @@ def taskinfo(task_id):
     notify = ""
     if not ftptask:
         currentnotify = ""
+        # if-else can be removed
         if "logged_in" in session and session["logged_in"]:
             currentnotify = "%s@vmware.com" %(session["username"])
             notify_list = []
