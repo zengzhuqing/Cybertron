@@ -170,6 +170,8 @@ kernel-debuginfo-2.6.32-431.1.2.el6.x86_64.rpm
 # sudo cp retrace-server-1.12/src/app.py /usr/share/retrace-server
 # sudo cp -r retrace-server-1.12/src/templates /usr/share/retrace-server
 # cd /usr/share/retrace-server && ln -sf templates static
+# sudo cp retrace-server-1.12/src/config/retrace-server.conf /etc
 
 5. Start flask webserver
 # sudo python app.py, currently the port is 5000
+# sudo cp retrace-server-1.12/src/config/retrace-server.conf /etc
