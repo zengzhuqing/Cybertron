@@ -90,21 +90,18 @@ class RetraceLogParser:
     def get_call_trace(self):
         return self.call_trace 
  
-#Fixme
-#the same with parser, a search base class is needed.
+class CybertronSearch:
 
-class RedHatKBSearch:
-
-    def __init__(self, parser):
-        self.matched_kbs = []
+    def __init__(self, parser, es_url, query_field):
         self.parser = parser   
-        self.es_url = "http://cybertron.eng.vmware.com:9200/redhat_kb/kb/_search" 
+        self.es_url = es_url
+        self.query_field = "[\"" + "\",\"".join(query_field) +"\"]"
         if self.is_crash_issue():
             self.build_crash_query_dsl()
         else:
             self.build_unsupported_query_dsl()
         #TODO: hang problem
-
+    
     def is_crash_issue(self):
         return self.parser.get_crash_ip() != None 
 
@@ -113,26 +110,53 @@ class RedHatKBSearch:
         query = "EIP RIP" + " " + crash_ip
         call_trace = self.parser.get_call_trace()
         for i in call_trace:
-            query += " " + i            
-        self.query_dsl = '{"query":{"multi_match":{"query":"%s", "fields":["issue", "resolution", "diagnostic", "rootcause"]}}}' %query 
+            query += " " + i
+        self.query_dsl = '{"query":{"multi_match":{"query":"%s", "fields":%s}}}' %(query, self.query_field)
 
     def build_unsupported_query_dsl(self):
         ##TMP code
         magic_code = "ABCDEFGHIJKLMN"
-        self.query_dsl = '{"query":{"multi_match":{"query":"%s", "fields":["issue", "resolution", "diagnostic", "rootcause"]}}}' %magic_code 
+        self.query_dsl = '{"query":{"multi_match":{"query":"%s", "fields":%s}}}' %(magic_code, self.query_field)
 
     def do_search(self):
         child = Popen(["curl", "-XGET", self.es_url, "-d", self.query_dsl], stdout=PIPE)
         search_result = child.communicate(None)[0]
         # Now parse the search result 
-        j = json.loads(search_result)
-        for i in j["hits"]["hits"]:
-            self.matched_kbs.append((i["_source"]["title"],i["_id"]))  
-    
-    def get_matched_kbs(self):
-        self.do_search()        
-        return self.matched_kbs          
+        return json.loads(search_result)
 
+    def dump(self):
+        print self.do_search()
+  
+class RedHatKBSearch(CybertronSearch):
+
+    def __init__(self, parser):
+        es_url = "http://cybertron.eng.vmware.com:9200/redhat_kb/kb/_search"
+        query_fields = ["issue","resolution","diagnostic","rootcause"]
+        CybertronSearch.__init__(self, parser, es_url, query_fields)
+
+    # TODO: output json format result
+    def dump(self):
+        jans = CybertronSearch.do_search(self)
+        print jans 
+         
+        for array in jans["hits"]["hits"]:
+            print array["_source"]["title"],array["_id"]
+
+class VMBugzillaSearch(CybertronSearch):
+
+    def __init__(self, parser):
+        es_url = "http://cybertron.eng.vmware.com:9200/bugzilla/text/_search"
+        query_fields = ["summary","text"]
+        CybertronSearch.__init__(self, parser, es_url, query_fields)
+
+    # TODO: output json format result
+    def dump(self):
+        jans = CybertronSearch.do_search(self)
+        print jans 
+        
+        for array in jans["hits"]["hits"]:
+            print array["_source"]["summary"],array["_id"]
+    
 if __name__ == "__main__":
     cmdline_parser = ArgumentParser(description="Execute a retrace parser job")
     cmdline_parser.add_argument("task_id", type=int, help="Task ID (%s/<task_id>) must exist" % CONFIG["SaveDir"])
@@ -153,7 +177,6 @@ if __name__ == "__main__":
     #print parser.get_call_trace()
     
     searcher = RedHatKBSearch(parser)
-    #print searcher.do_search()
-    for i in searcher.get_matched_kbs():
-        url="https://access.redhat.com/solutions/%d" %int(i[1])
-        print i[0] + "@#$%" + url 
+    searcher.dump() 
+    searcher = VMBugzillaSearch(parser)
+    searcher.dump() 
