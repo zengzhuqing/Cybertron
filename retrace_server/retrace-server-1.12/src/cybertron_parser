@@ -36,7 +36,7 @@ class RetraceLogParser:
         prog = re.compile(pattern)
         if result != None:
             match = re.split('[\ \t+]*', result.group(0))
-            print match[3] 
+            return match[3] 
         else:
             return None
 
@@ -118,14 +118,12 @@ class CybertronSearch:
         magic_code = "ABCDEFGHIJKLMN"
         self.query_dsl = '{"query":{"multi_match":{"query":"%s", "fields":%s}}}' %(magic_code, self.query_field)
 
-    def do_search(self):
+    def get_search_result(self):
         child = Popen(["curl", "-XGET", self.es_url, "-d", self.query_dsl], stdout=PIPE)
-        search_result = child.communicate(None)[0]
-        # Now parse the search result 
-        return json.loads(search_result)
+        return child.communicate(None)[0]
 
     def dump(self):
-        print self.do_search()
+        print self.get_search_result()
   
 class RedHatKBSearch(CybertronSearch):
 
@@ -134,14 +132,6 @@ class RedHatKBSearch(CybertronSearch):
         query_fields = ["issue","resolution","diagnostic","rootcause"]
         CybertronSearch.__init__(self, parser, es_url, query_fields)
 
-    # TODO: output json format result
-    def dump(self):
-        jans = CybertronSearch.do_search(self)
-        print jans 
-         
-        for array in jans["hits"]["hits"]:
-            print array["_source"]["title"],array["_id"]
-
 class VMBugzillaSearch(CybertronSearch):
 
     def __init__(self, parser):
@@ -149,14 +139,6 @@ class VMBugzillaSearch(CybertronSearch):
         query_fields = ["summary","text"]
         CybertronSearch.__init__(self, parser, es_url, query_fields)
 
-    # TODO: output json format result
-    def dump(self):
-        jans = CybertronSearch.do_search(self)
-        print jans 
-        
-        for array in jans["hits"]["hits"]:
-            print array["_source"]["summary"],array["_id"]
-    
 if __name__ == "__main__":
     cmdline_parser = ArgumentParser(description="Execute a retrace parser job")
     cmdline_parser.add_argument("task_id", type=int, help="Task ID (%s/<task_id>) must exist" % CONFIG["SaveDir"])
@@ -177,6 +159,8 @@ if __name__ == "__main__":
     #print parser.get_call_trace()
     
     searcher = RedHatKBSearch(parser)
-    searcher.dump() 
+    task.set_rhkb_matched(searcher.get_search_result()) 
+    #searcher.dump() 
     searcher = VMBugzillaSearch(parser)
-    searcher.dump() 
+    task.set_vmbugzilla_matched(searcher.get_search_result()) 
+    #searcher.dump() 

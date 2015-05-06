@@ -134,10 +134,41 @@
     {% if kernellog_title %}
     <h2>{{kernellog_title}}</h2>
     <textarea class="backtrace">{{kernellog_content}}</textarea>
-    <h2>RedHat KB match</h2>
+    <h2>RedHat KB matched</h2>
     {% for item in rhkb_matched %}
-        <p><a href={{item[0]}}>{{item[1]}}</a></p>
+        <p><a target=_blank href={{item[0]}}>{{item[1]}}</a></p>
     {% endfor %} 
+    <h2>VMware Bugzilla matched</h2>
+    <table class="table table-striped">
+        <tr>
+            <th>ID</th>
+            <th>Opened</th>
+            <th>Severity</th>
+            <th>Priority</th>
+            <th>Status</th>
+            <th>Assignee</th>
+            <th>Reporter</th>
+            <th>Category</th>
+            <th>Component</th>
+            <th>Fix by</th>
+            <th>Summary</th>
+        </tr>
+        {% for item in vmbugzilla_matched %}
+        <tr>
+            <td><a target=_blank href="https://bugzilla.eng.vmware.com/show_bug.cgi?id={{item[0]}}">{{ item[0] }}</a></td> 
+            <td>{{ item[1]["opened"] }}</td> 
+            <td>{{ item[1]["severity"] }}</td> 
+            <td>{{ item[1]["priority"] }}</td>
+            <td>{{ item[1]["status"] }}</td>
+            <td>{{ item[1]["assignee"] }}</td>
+            <td>{{ item[1]["reporter"] }}</td>
+            <td>{{ item[1]["category"] }}</td>
+            <td>{{ item[1]["component"] }}</td>
+            <td>{{ item[1]["fixby"] }}</td>
+            <td>{{ item[1]["summary"] }}</td>
+        </tr> 
+        {% endfor %}
+    </table>
     {% endif %}
      
     </div>

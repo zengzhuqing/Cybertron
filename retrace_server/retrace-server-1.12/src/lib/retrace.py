@@ -1320,7 +1320,8 @@ class RetraceTask:
     """Represents Retrace server's task."""
 
     BACKTRACE_FILE = "retrace_backtrace"
-    MATCHED_FILE = "cybertron_matched"
+    RHKB_MATCHED_FILE = "cybertron_rhkb_matched"
+    VMBUGZILLA_MATCHED_FILE = "cybertron_vmbugzilla_matched"
     CASENO_FILE = "caseno"
     CRASHRC_FILE = "crashrc"
     DOWNLOADED_FILE = "downloaded"
@@ -1557,16 +1558,26 @@ class RetraceTask:
         """Atomically writes given string into BACKTRACE_FILE."""
         self.set_atomic(RetraceTask.BACKTRACE_FILE, backtrace)
 
-       # Add by zengzhuqing: {get,set}_matched
-    def get_matched(self):
-        """Returns None if there is no MATCHED_FILE in the task directory,
-        MATCHED_FILE's contents otherwise."""
+    # Add by zengzhuqing: {get,set}_matched
+    def get_rhkb_matched(self):
+        """Returns None if there is no RHKB_MATCHED_FILE in the task directory,
+        RHKB_MATCHED_FILE's contents otherwise."""
         # max 16 MB
-        return self.get(RetraceTask.MATCHED_FILE, maxlen=1 << 24)
+        return self.get(RetraceTask.RHKB_MATCHED_FILE, maxlen=1 << 24)
 
-    def set_matched(self, matched):
-        """Atomically writes given string into MATCHED_FILE."""
-        self.set_atomic(RetraceTask.MATCHED_FILE, matched)
+    def set_rhkb_matched(self, matched):
+        """Atomically writes given string into RHKB_MATCHED_FILE."""
+        self.set_atomic(RetraceTask.RHKB_MATCHED_FILE, matched)
+    
+    def get_vmbugzilla_matched(self):
+        """Returns None if there is no VMBUGZILLA_MATCHED_FILE in the task directory,
+        VMBUGZILLA_MATCHED_FILE's contents otherwise."""
+        # max 16 MB
+        return self.get(RetraceTask.VMBUGZILLA_MATCHED_FILE, maxlen=1 << 24)
+
+    def set_vmbugzilla_matched(self, matched):
+        """Atomically writes given string into VMBUGZILLA_MATCHED_FILE."""
+        self.set_atomic(RetraceTask.VMBUGZILLA_MATCHED_FILE, matched)
     # Add by zengzhuqing end    
 
     def has_log(self):

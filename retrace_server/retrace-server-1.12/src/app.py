@@ -9,6 +9,7 @@ from retrace import *
 import re
 import fnmatch
 import urlparse
+import json
 
 from retrace.Bugzilla_webservice import BugzillaServer
 
@@ -400,6 +401,7 @@ def taskinfo(task_id):
     kernellog_content = ""
     testwindow = ""
     rhkb_matched = []
+    vmbugzilla_matched = []
     if not ftptask:
         if task.has_backtrace():
             kernellog_title = "Kernel log"
@@ -418,12 +420,20 @@ def taskinfo(task_id):
                           _("You can jump directly to the debugger with:"), task_id, debugger,
                           _("see"), _("for further information about cmdline flags"))
 
-            #TODO: change to a good name
-
-            if task.get_matched() != None:
-                for i in task.get_matched().split('\n')[0:-1]:
-                    item = i.split('@#$%')
-                    rhkb_matched.append((item[1], item[0])) 
+            # Redhat KB search result parse
+            rhkb_search_result = task.get_rhkb_matched()
+            if rhkb_search_result != None:
+                jans = json.loads(rhkb_search_result)
+                for array in jans["hits"]["hits"]:
+                    addr = "https://access.redhat.com/solutions/%s" %(array["_id"]) 
+                    rhkb_matched.append((addr, array["_source"]["title"]))
+            
+            # VMware Bugzilla search result parse
+            vmbugzilla_search_result = task.get_vmbugzilla_matched()
+            if vmbugzilla_search_result != None:
+                jans = json.loads(vmbugzilla_search_result)
+                for array in jans["hits"]["hits"]:
+                    vmbugzilla_matched.append((array["_id"], array["_source"]))
         
         elif task.has_log():
             log_title = "Log"
@@ -520,6 +530,7 @@ def taskinfo(task_id):
     replace['downloaded'] = downloaded
     replace['starttime'] = starttime
     replace['finishtime'] = finishtime
+    replace['vmbugzilla_matched'] = vmbugzilla_matched
 
     return render_template("managertask.html", misclist=misclist,\
          rhkb_matched = rhkb_matched,  **replace)

@@ -663,11 +663,7 @@ def start_vmcore():
         task.add_misc("bt-filter", bt_filter)
 
     if kernellog:
-        child = Popen(["cybertron_parser", str(task.get_taskid())], stdin=PIPE, stdout=PIPE, stderr=None)
-        parser = child.communicate(None)[0]
-        if child.wait():
-            parser = "cybertron_parser exitted with %d\n\n%s" % (child.returncode, cybertron_parser)
-    task.set_matched(parser)
+        check_call(["cybertron_parser", str(task.get_taskid())])
     
     crashrc_lines = []
 
