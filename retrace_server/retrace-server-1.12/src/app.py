@@ -1,3 +1,4 @@
+#!/usr/bin/python
 from flask import Flask
 from flask import render_template
 from flask import request
@@ -21,8 +22,8 @@ LONG_TYPES = { TASK_RETRACE: "Coredump retrace",
                TASK_RETRACE_INTERACTIVE: "Coredump retrace - interactive",
                TASK_VMCORE_INTERACTIVE: "VMcore retrace - interactive" }
 
-app = Flask(__name__)
-app.secret_key = 'abc'
+application= Flask(__name__)
+application.secret_key = 'abc'
 def is_local_task(taskid):
     try:
         RetraceTask(taskid)
@@ -38,7 +39,7 @@ def get_status_for_task_manager(task, _=lambda x: x):
 
     return status
 
-@app.route('/Logout', methods=['POST'])
+@application.route('/Logout', methods=['POST'])
 def Logout():
     """
     This function helps user to log out.
@@ -59,7 +60,7 @@ def Logout():
     else:
         return redirect(url_for("Index"))    
 
-@app.route('/Login', methods=['POST'])
+@application.route('/Login', methods=['POST'])
 def Login():
     """
     This function handles login function.
@@ -111,7 +112,7 @@ def Login():
     else:
         return redirect(url_for("Index"))    
 
-@app.route('/Create', methods=['POST'])
+@application.route('/Create', methods=['POST'])
 def Create():
     qs_base = []
     if "debug" in request.form and request.form["debug"] == "on":
@@ -147,7 +148,7 @@ def Create():
 
     return redirect(starturl)
 
-@app.route('/<task_id>/start')
+@application.route('/<task_id>/start')
 def Start(task_id):
     get = urlparse.parse_qs(request.query_string)
     ftptask = False
@@ -225,7 +226,7 @@ def Start(task_id):
     redirect_url = "/%d" % (task.get_taskid())
     return redirect(redirect_url)
 
-@app.route('/')
+@application.route('/')
 def Index():
     _ = parse_http_gettext("%s" % request.accept_languages,
                            "%s" % request.accept_charsets)
@@ -330,7 +331,7 @@ def Index():
 
     return render_template("manager.html", running = running, finish = finished, **replace)
 
-@app.route('/<task_id>')
+@application.route('/<task_id>')
 def taskinfo(task_id):
     _ = parse_http_gettext("%s" % request.accept_languages,
                            "%s" % request.accept_charsets)
@@ -531,7 +532,7 @@ def taskinfo(task_id):
     return render_template("managertask.html", misclist=misclist,\
          rhkb_matched = rhkb_matched,  **replace)
 
-@app.route('/<task_id>/kernellog')
+@application.route('/<task_id>/kernellog')
 def ShowRawKernelLog(task_id): 
     try:
         task = RetraceTask(task_id)
@@ -548,7 +549,7 @@ def ShowRawKernelLog(task_id):
     response.content_type = "text/plain"
     return response
 
-@app.route('/<task_id>/misc/<item>')
+@application.route('/<task_id>/misc/<item>')
 def ShowMiscItem(task_id, item):
     try:
         task = RetraceTask(task_id)
@@ -562,7 +563,7 @@ def ShowMiscItem(task_id, item):
     response.content_type = "text/plain"
     return response
 
-@app.route('/<task_id>/delete')
+@application.route('/<task_id>/delete')
 def Delete(task_id):
     try:
         task = RetraceTask(task_id)
@@ -579,7 +580,7 @@ def Delete(task_id):
 
     return redirect(url_for("Index"))
 
-@app.route('/<task_id>/updatecaseno', methods=['GET', 'POST'])
+@application.route('/<task_id>/updatecaseno', methods=['GET', 'POST'])
 def UpdateCaseNo(task_id):
     try:
         task = RetraceTask(task_id)
@@ -600,7 +601,7 @@ def UpdateCaseNo(task_id):
     url = "/%s" %(task_id)
     return redirect(url)
 
-@app.route('/<task_id>/updatenotify', methods=['GET', 'POST'])
+@application.route('/<task_id>/updatenotify', methods=['GET', 'POST'])
 def UpdateNotify(task_id):
     try:
         task = RetraceTask(task_id)
@@ -614,5 +615,5 @@ def UpdateNotify(task_id):
     return redirect(url)
     
 if __name__ == '__main__':
-    app.debug = True
-    app.run(host='0.0.0.0')
+    application.debug = True
+    application.run(host='0.0.0.0')
