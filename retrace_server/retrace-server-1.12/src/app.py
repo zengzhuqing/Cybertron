@@ -217,10 +217,6 @@ def Start(task_id):
         kernelver = str(kernelver)
         arch = kernelver.arch
 
-    #if "notify" in get:
-    #    task.set_notify(filter(None, set(n.strip() for n in get["notify"][0].replace(";", ",").split(","))))
-    task.set_notify("%s@vmware.com" %(session["username"]))
-
     task.start(debug=debug, kernelver=kernelver, arch=arch)
 
     # ugly, ugly, ugly! retrace-server-worker double-forks and needs a while to spawn
