@@ -8,7 +8,7 @@ from db_con import get_bz_con
 from threading import Thread
 import config
 
-begin = 489
+begin = 1
 
 class VMBugzilla_to_ES_Loader:
 
