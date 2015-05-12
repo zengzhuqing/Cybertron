@@ -6,139 +6,126 @@ from retrace import *
 from plugins import *
 import json
 
-#Fixme 
-#better we define a Parser base class and implementated with different parsers, like kernel oops/kernel hang/kernel warning...
+############################################################################
+### Use Factory Method Design Mode
+###         Parser              Searcher
+###            ^                   ^
+###            |                   |  
+###     ConcreteParser  <-  ConcreteSeacher
+############################################################################
 
-class RetraceLogParser:
-    
+class Parser:
+    """ Abstract base class Parser """
+
     def __init__(self, task):
+        if self.__class__ == Parser:
+            raise NotImplementedError, \
+                "Cannot create object of abstract class Parser"
         self.task = task
-        self.call_trace = []
-        self.crash_ip = None
+
+    def parse(self):
+        """ Abstract method, derived class must overide """
+        raise NotImplementedError, \
+            "Cannot call abstract method"
+
+    def get_search_dsl(self, query_field):
+        """ Abstract method, derived class must overide """
+        raise NotImplementedError, \
+            "Cannot call abstract method"
+
+class CrashParser(Parser):
+
+    def __init__(self, task):
+        Parser.__init__(self, task)
     
-    def is_kernel_oops_begin(self, line):
-        pattern = '^BUG'
-        prog = re.compile(pattern)
-        if prog.match(line) != None: 
-            return True
-        pattern = '^PGD'
-        prog = re.compile(pattern)
-        return prog.match(line) != None  
-
-    def parse_crash_ip(self, line):
-        pattern = '^RIP.*'
-        prog = re.compile(pattern)
-        result = prog.match(line)
-        if result != None:
-            match = re.split('[\ \t+]*', result.group(0))
-            return match[3]
-        pattern = '^EIP.*'
-        prog = re.compile(pattern)
-        if result != None:
-            match = re.split('[\ \t+]*', result.group(0))
-            return match[3] 
-        else:
-            return None
-
-    def is_call_trace_begin(self, line):
-        pattern = 'Call\ Trace'
-        prog = re.compile(pattern)
-        return prog.match(line) != None 
-        
-    def parse_call_trace(self, line):
-        pattern = '[\ \t]*\[<.*>\]'
-        prog = re.compile(pattern)
-        result = prog.match(line)
-        if result != None:
-            match = re.split('[\ +]*', line)
-            return match[-2]
-        else:
-            return None
-
-    def do_parse(self):
         if task.has_backtrace() == False:
-            print "No backtrace"
-            return
-        log = task.get_backtrace()
-        lines = log.split('\n')
-        
-        is_begin = False
-        crash_ip_found = False
-        is_call_begin = False
-        is_call_end = False
-        for i in lines:
-            if is_begin == False:
-                is_begin = self.is_kernel_oops_begin(i)
-            elif crash_ip_found == False:
-                self.crash_ip = self.parse_crash_ip(i)
+            raise RuntimeError, "No backtrace"
+            
+        self.lines = task.get_backtrace().split('\n')
+        self.crash_ip = None
+        self.call_trace = []
+    
+    def parse(self):
+        is_crash_ip_found = False
+        for line in self.lines:
+            if is_crash_ip_found == False:
+                self.crash_ip = self.parse_crash_ip(line)
                 if self.crash_ip != None:
-                    crash_ip_found = True
-            elif is_call_begin == False:
-                is_call_begin = self.is_call_trace_begin(i)
-            elif is_call_end == False:
-                ret = self.parse_call_trace(i)
-                if ret != None:
-                    self.call_trace.append(ret)
-                else:
-                    is_call_end = True
+                    is_crash_ip_found = True
+            elif len(self.call_trace) < 3: 
+                name = self.parse_call_trace(line)
+                if name != None:
+                    self.call_trace.append(name)
             else:
                 break
-
-    def get_crash_ip(self):
-        return self.crash_ip
-
-    def get_call_trace(self):
-        return self.call_trace 
- 
-class CybertronSearch:
-
-    def __init__(self, parser, es_url, query_field):
-        self.parser = parser   
-        self.es_url = es_url
-        self.query_field = "[\"" + "\",\"".join(query_field) +"\"]"
-        if self.is_crash_issue():
-            self.build_crash_query_dsl()
-        else:
-            self.build_unsupported_query_dsl()
-        #TODO: hang problem
-    
-    def is_crash_issue(self):
-        return self.parser.get_crash_ip() != None 
-
-    def build_crash_query_dsl(self):
-        crash_ip = self.parser.get_crash_ip()
-        query = "EIP RIP" + " " + crash_ip
-        call_trace = self.parser.get_call_trace()
-        for i in call_trace:
+        log_info("crash_ip: %s" %(self.crash_ip)) 
+        log_info("call_trace: %s" %(self.call_trace)) 
+        return is_crash_ip_found
+  
+    def get_search_dsl(self, query_field): 
+        query = self.crash_ip
+        for i in self.call_trace:
             query += " " + i
-        self.query_dsl = '{"query":{"multi_match":{"query":"%s", "fields":%s}}}' %(query, self.query_field)
+        fields = "[\"" + "\",\"".join(query_field) +"\"]"
 
-    def build_unsupported_query_dsl(self):
-        ##TMP code
-        magic_code = "ABCDEFGHIJKLMN"
-        self.query_dsl = '{"query":{"multi_match":{"query":"%s", "fields":%s}}}' %(magic_code, self.query_field)
+        dsl = '{"query":{"multi_match":{"query":"%s", "fields":%s}}}' %(query, fields)
+        log_info("query dsl: %s" %(dsl))
+        return dsl    
+
+    def parse_crash_ip(self, line):
+        #FIXME: add 32bit support
+        pattern = "(RIP:) ([0-9a-f]{4}:\[\<[0-9a-f]{16}\>\])  "\
+                        "(\[\<[0-9a-f]{16}\>\]) (?P<function_name>.+)\+"
+        prog = re.compile(pattern)
+        result =  prog.match(line)
+        if result != None:
+            return result.group('function_name')   
+        return None
+
+    def parse_call_trace(self, line):
+        pattern = " (\[\<[a-f0-9]{16}\>\]) (?P<function_name>.+)\+"
+        prog = re.compile(pattern)
+        result = prog.match(line)
+        if result != None:
+            return result.group('function_name')   
+        return None
+
+class Searcher:
+    """ Abstract base class Searcher """
+    def __init__(self, es_url, query_field, task):
+        if self.__class__ == Searcher:
+            raise NotImplementedError, \
+                "Cannot create object of abstract class Parser"
+        self.es_url = es_url
+        self.query_field = query_field
+        self.task = task
+
+    def create_parser(self):
+        """ Abstract method, derived class must overide """
+        raise NotImplementedError, \
+            "Cannot call abstract method"
 
     def get_search_result(self):
-        child = Popen(["curl", "-XGET", self.es_url, "-d", self.query_dsl], stdout=PIPE)
-        return child.communicate(None)[0]
+        parser = self.create_parser()
+        if parser != None:
+            child = Popen(["curl", "-XGET", self.es_url, "-d", parser.get_search_dsl(self.query_field)], stdout=PIPE)
+            return child.communicate(None)[0]
+        else:
+            return None
 
-    def dump(self):
-        print self.get_search_result()
-  
-class RedHatKBSearch(CybertronSearch):
-
-    def __init__(self, parser):
-        es_url = "http://cybertron.eng.vmware.com:9200/redhat_kb/kb/_search"
-        query_fields = ["issue","resolution","diagnostic","rootcause"]
-        CybertronSearch.__init__(self, parser, es_url, query_fields)
-
-class VMBugzillaSearch(CybertronSearch):
-
-    def __init__(self, parser):
-        es_url = "http://cybertron.eng.vmware.com:9200/bugzilla/text/_search"
-        query_fields = ["summary","text"]
-        CybertronSearch.__init__(self, parser, es_url, query_fields)
-
+class CybertronSearcher(Searcher):
+    
+    def __init__(self, es_url, query_field, task):
+        Searcher.__init__(self, es_url, query_field, task)
+    
+    def create_parser(self):
+        parser = CrashParser(self.task)
+        if parser.parse():
+            log_info("Task %d: Use CrashParser" %(self.task.get_taskid()))
+            return parser
+        # Add other parser here
+        return None
+ 
 if __name__ == "__main__":
     cmdline_parser = ArgumentParser(description="Execute a retrace parser job")
     cmdline_parser.add_argument("task_id", type=int, help="Task ID (%s/<task_id>) must exist" % CONFIG["SaveDir"])
@@ -153,14 +140,20 @@ if __name__ == "__main__":
         sys.stderr.write("Task '%d' does not exist\n" % cmdline.task_id)
         exit(1)
 
-    parser = RetraceLogParser(task)
-    parser.do_parse()
-    #print parser.get_crash_ip()
-    #print parser.get_call_trace()
+    # Search in RedHat KB
+    rh_es_url = "http://cybertron.eng.vmware.com:9200/redhat_kb/kb/_search"   
+    rh_query_fields = ["issue","resolution","diagnostic","rootcause"]  
+    rh_searcher = CybertronSearcher(rh_es_url, rh_query_fields, task)  
+  
+    #print rh_searcher.get_search_result()
+    task.set_rhkb_matched(rh_searcher.get_search_result()) 
     
-    searcher = RedHatKBSearch(parser)
-    task.set_rhkb_matched(searcher.get_search_result()) 
-    #searcher.dump() 
-    searcher = VMBugzillaSearch(parser)
-    task.set_vmbugzilla_matched(searcher.get_search_result()) 
-    #searcher.dump() 
+    # Search in VM Bugzilla
+    vmb_es_url = "http://cybertron.eng.vmware.com:9200/bugzilla/text/_search"     
+    vmb_query_fields = ["summary","text"]   
+    vmb_searcher = CybertronSearcher(vmb_es_url, vmb_query_fields, task)  
+    
+    #print vmb_searcher.get_search_result()
+    task.set_vmbugzilla_matched(vmb_searcher.get_search_result())
+    
+    task.set_parser_log(log.getvalue())

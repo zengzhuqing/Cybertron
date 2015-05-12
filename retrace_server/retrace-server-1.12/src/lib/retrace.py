@@ -1328,6 +1328,7 @@ class RetraceTask:
     FINISHED_FILE = "finished_time"
     KERNELVER_FILE = "kernelver"
     LOG_FILE = "retrace_log"
+    PARSER_LOG_FILE = "parser_log"
     MANAGED_FILE = "managed"
     MISC_DIR = "misc"
     NOTES_FILE = "notes"
@@ -1596,6 +1597,23 @@ class RetraceTask:
             mode = "a"
 
         self.set_atomic(RetraceTask.LOG_FILE, log, mode=mode)
+    
+    def has_parser_log(self):
+        """Verifies whether PARSER_LOG_FILE is present in the task directory."""
+        return self.has(RetraceTask.PARSER_LOG_FILE)
+
+    def get_parser_log(self):
+        """Returns None if there is no PARSER_LOG_FILE in the task directory,
+        PARSER_LOG_FILE's contents otherwise."""
+        return self.get(RetraceTask.PARSER_LOG_FILE, maxlen=1 << 22)
+
+    def set_parser_log(self, log, append=False):
+        """Atomically writes or appends given string into LOG_FILE."""
+        mode = "w"
+        if append:
+            mode = "a"
+
+        self.set_atomic(RetraceTask.PARSER_LOG_FILE, log, mode=mode)
 
     def has_status(self):
         """Verifies whether STATUS_FILE is present in the task directory."""
