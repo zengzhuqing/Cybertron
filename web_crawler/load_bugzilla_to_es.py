@@ -17,6 +17,8 @@ class VMBugzilla_to_ES_Loader:
 #    bugid(0), title(9), text(11) (essential part for full text search)
 #       opened(1), severity(2), priority(3), status(4), assignee(5), reporter(6),
 #       category(7), component(8), fixby(10)(for result display)
+#   fields name is es:
+#       summary, text       
 ##############################################################################
 
     def __init__(self):
@@ -24,6 +26,40 @@ class VMBugzilla_to_ES_Loader:
         self.index = 'bugzilla'
         self.doc_type = 'text'
         self.working_thread = []
+        self.create_index()
+    
+    def create_index(self): 
+        # Create an index with settings and mapping, a line is a term
+        #    1. add a new tokenizer which divide by /n
+        #    2. add mappings to doc_type and field
+        doc = {
+            'settings':{
+                'analysis':{
+                    'analyzer':{
+                        'line_tokenizer':{
+                            'type':'pattern',
+                            'pattern':'\n'
+                        }
+                    }
+                }
+            },
+            'mappings':{
+                self.doc_type:{
+                   'properties':{
+                        'summary':{
+                            'type':'string',
+                            'analyzer':'line_tokenizer'
+                        },                                       
+                        'text':{
+                            'type':'string',
+                            'analyzer':'line_tokenizer'
+                        }                                       
+                    } 
+                } 
+            }
+        }
+        res = self.es.indices.create(index = self.index, body = doc)
+        return res    
 
     def create_item(self, bugid, bz_con, bz_cur):
         sql='select bug_id, creation_ts, bug_severity, priority, bug_status, assigned_to, reporter, category_id, component_id, short_desc from bugs where bug_id = %d' %(bugid)
