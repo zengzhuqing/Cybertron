@@ -17,26 +17,39 @@ import json
 class Parser:
     """ Abstract base class Parser """
 
-    def __init__(self, task):
+    def __init__(self, task, es_url, query_field):
         if self.__class__ == Parser:
             raise NotImplementedError, \
                 "Cannot create object of abstract class Parser"
         self.task = task
+        self.es_url = es_url
+        self.query_field = query_field
 
     def parse(self):
         """ Abstract method, derived class must overide """
         raise NotImplementedError, \
             "Cannot call abstract method"
 
-    def get_search_dsl(self, query_field):
+    def get_search_result(self):
         """ Abstract method, derived class must overide """
         raise NotImplementedError, \
             "Cannot call abstract method"
 
+    def search_result_and(self, json_a, json_b):
+        raise NotImplementedError, \
+            "TODO"
+ 
+    def search_result_or(self, json_a, json_b):
+        j_a = json.loads(json_a)
+        j_b = json.loads(json_b)
+        for array in j_b["hits"]["hits"]:
+            j_a["hits"]["hits"].append(array) 
+        return json.dumps(j_a) 
+
 class CrashParser(Parser):
 
-    def __init__(self, task):
-        Parser.__init__(self, task)
+    def __init__(self, task, es_url, query_field):
+        Parser.__init__(self, task, es_url, query_field)
     
         if task.has_backtrace() == False:
             raise RuntimeError, "No backtrace"
@@ -61,16 +74,30 @@ class CrashParser(Parser):
         log_info("crash_ip: %s" %(self.crash_ip)) 
         log_info("call_trace: %s" %(self.call_trace)) 
         return is_crash_ip_found
-  
-    def get_search_dsl(self, query_field): 
-        query = self.crash_ip
-        for i in self.call_trace:
-            query += " " + i
-        fields = "[\"" + "\",\"".join(query_field) +"\"]"
 
-        dsl = '{"query":{"multi_match":{"query":"%s", "fields":%s}}}' %(query, fields)
-        log_info("query dsl: %s" %(dsl))
-        return dsl    
+    def get_crash_ip_search_result(self):
+        # Remind that \[ should write as \\\\[, because regexp->search_dsl->curl, 
+        #    every one transfer, a \ should be replaced by \\ 
+        regexp = " *rip: [0-9a-f]{4}:\\\\[\\\\<[0-9a-f]{16}\\\\>\\\\]  \\\\[\\\\<[0-9a-f]{16}\\\\>\\\\] %s\\\\+.*" %(self.crash_ip)
+        #log_info("regexp: %s" %(regexp))
+        search_dsl = '{"query":{"regexp":{"%s":"%s"}}}' %(self.query_field[0], regexp)
+        log_info("get crash ip search dsl: %s" %(search_dsl))
+        child = Popen(["curl", "-XGET", self.es_url, "-d", search_dsl], stdout = PIPE)
+        return child.communicate(None)[0]
+
+    def get_call_trace_search_result(self, fun):
+        regexp = " *\\\\[\\\\<[0-9a-f]{16}\\\\>\\\\] %s\\\\+.*" %(fun)
+        #log_info("regexp: %s" %(regexp))
+        search_dsl = '{"query":{"regexp":{"%s":"%s"}}}' %(self.query_field[0], regexp)
+        log_info("get call trace search dsl: %s" %(search_dsl))
+        child = Popen(["curl", "-XGET", self.es_url, "-d", search_dsl], stdout = PIPE)
+        return child.communicate(None)[0]
+ 
+    def get_search_result(self):
+        query = self.crash_ip
+
+        #return self.get_call_trace_search_result(self.call_trace[0])
+        return self.get_crash_ip_search_result()
 
     def parse_crash_ip(self, line):
         #FIXME: add 32bit support
@@ -108,8 +135,8 @@ class Searcher:
     def get_search_result(self):
         parser = self.create_parser()
         if parser != None:
-            child = Popen(["curl", "-XGET", self.es_url, "-d", parser.get_search_dsl(self.query_field)], stdout=PIPE)
-            return child.communicate(None)[0]
+            # Generate search result
+            return parser.get_search_result()
         else:
             return None
 
@@ -119,7 +146,7 @@ class CybertronSearcher(Searcher):
         Searcher.__init__(self, es_url, query_field, task)
     
     def create_parser(self):
-        parser = CrashParser(self.task)
+        parser = CrashParser(self.task, self.es_url, self.query_field)
         if parser.parse():
             log_info("Task %d: Use CrashParser" %(self.task.get_taskid()))
             return parser
@@ -142,7 +169,7 @@ if __name__ == "__main__":
 
     # Search in RedHat KB
     rh_es_url = "http://cybertron.eng.vmware.com:9200/redhat_kb/kb/_search"   
-    rh_query_fields = ["issue","resolution","diagnostic","rootcause"]  
+    rh_query_fields = ["text"]  
     rh_searcher = CybertronSearcher(rh_es_url, rh_query_fields, task)  
   
     #print rh_searcher.get_search_result()
@@ -150,7 +177,7 @@ if __name__ == "__main__":
     
     # Search in VM Bugzilla
     vmb_es_url = "http://cybertron.eng.vmware.com:9200/bugzilla/text/_search"     
-    vmb_query_fields = ["summary","text"]   
+    vmb_query_fields = ["text"]   
     vmb_searcher = CybertronSearcher(vmb_es_url, vmb_query_fields, task)  
     
     #print vmb_searcher.get_search_result()
