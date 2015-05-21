@@ -8,11 +8,9 @@ class RHKB_to_ES_Loader:
 
 ##############################################################################
 # RedHat Database structure:
-#    KBid, URL, Issue, Environment, Resolution 
-###############################################
 #    KBid, URL, Issue, Environment, Resolution, Rootcause, Diagnostic, Title
 #    search fields name in es: 
-#       issue, env, resolution, rootcause, diagnostic, title
+#       merge fields "issue, env, resolution, rootcause, diagnostic" into text
 ##############################################################################
 
     def __init__(self, dir):
@@ -40,26 +38,10 @@ class RHKB_to_ES_Loader:
             'mappings':{
                 self.doc_type:{
                    'properties':{
-                        'issue':{
+                        'text':{
                             'type':'string',
                             'analyzer':'line_tokenizer'
-                        },                                         
-                        'env':{
-                            'type':'string',
-                            'analyzer':'line_tokenizer'
-                        },                                       
-                        'resolution':{
-                            'type':'string',
-                            'analyzer':'line_tokenizer'
-                        },                                       
-                        'rootcause':{
-                            'type':'string',
-                            'analyzer':'line_tokenizer'
-                        },                                       
-                        'diagnostic':{
-                            'type':'string',
-                            'analyzer':'line_tokenizer'
-                        },                                       
+                        },                                      
                         'title':{
                             'type':'string',
                             'analyzer':'line_tokenizer'
@@ -75,13 +57,20 @@ class RHKB_to_ES_Loader:
         if page.is_en_page() == False:
             print "INFO: It is not an en page"
             return False
+        text = ""
+        if page.get_issue() != None:
+            text += page.get_issue()
+        if page.get_env() != None:
+            text += page.get_env()
+        if page.get_resolution() != None:
+            text += page.get_resolution()
+        if page.get_rootcause() != None:
+            text += page.get_rootcause()
+        if page.get_diagnostic() != None:
+            text += page.get_diagnostic()
         doc = {
             'url': page.get_url(),
-            'issue': page.get_issue(),
-            'env': page.get_env(),
-            'resolution': page.get_resolution(),
-            'rootcause': page.get_rootcause(),
-            'diagnostic': page.get_diagnostic(),
+            'text': text, 
             'title': page.get_title()
         }
         res = self.es.index(index = self.index, doc_type = self.doc_type, id = page.get_id(), body = doc)
