@@ -3,6 +3,7 @@
 <html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <link rel="icon" href="static/icons/cybertron.ico">
     <title>{{title}}</title>
     <!-- Bootstrap core CSS -->
     <link href="static/css/bootstrap.min.css" rel="stylesheet">
@@ -119,6 +120,7 @@
       </tr>
       {{unknownext}}
       <tr><td colspan="2">This is an interactive task</td></tr>
+      <tr><td colspan="2">You can jump to the chrooted shell: <a target=_blank href="http://cybertron.eng.vmware.com:8022">Chrooted Shell</a></td></tr>
       <tr><td colspan="2">You can jump to the chrooted shell with:<code>retrace-server-interact {{taskid}} shell</code></td></tr>
       <tr><td colspan="2">You can jump directly to the debugger with: <code>retrace-server-interact {{taskid}} {{debuguer}}</code></td></tr>
       <tr><td colspan="2">See <code>man retrace-server-interact</code> for further information about cmdline flags</td></tr>
@@ -132,14 +134,13 @@
     <textarea class="backtrace">{{log_content}}</textarea>
     {% endif %}
     {% if kernellog_title %}
+    <!--
     <h2>{{kernellog_title}}</h2>
     <textarea class="backtrace">{{kernellog_content}}</textarea>
-    <h2>RedHat KB matched</h2>
-    {% for item in rhkb_matched %}
-        <p><a target=_blank href={{item[0]}}>{{item[1]}}</a></p>
-    {% endfor %} 
+    -->
     <h2>VMware Bugzilla matched</h2>
-    <table class="table table-striped">
+    <!-- 
+   <table class="table table-striped">
         <tr>
             <th>ID</th>
             <th>Opened</th>
@@ -153,7 +154,10 @@
             <th>Fix by</th>
             <th>Summary</th>
         </tr>
+        -->
         {% for item in vmbugzilla_matched %}
+        <p><a target=_blank href="https://bugzilla.eng.vmware.com/show_bug.cgi?id={{item[0]}}">{{item[1]["summary"]}}</a></p>
+        <!--
         <tr>
             <td><a target=_blank href="https://bugzilla.eng.vmware.com/show_bug.cgi?id={{item[0]}}">{{ item[0] }}</a></td> 
             <td>{{ item[1]["opened"] }}</td> 
@@ -166,11 +170,15 @@
             <td>{{ item[1]["component"] }}</td>
             <td>{{ item[1]["fixby"] }}</td>
             <td>{{ item[1]["summary"] }}</td>
-        </tr> 
+        </tr>
+        --> 
         {% endfor %}
     </table>
+    <h2>RedHat KB matched</h2>
+    {% for item in rhkb_matched %}
+        <p><a target=_blank href={{item[0]}}>{{item[1]}}</a></p>
+    {% endfor %} 
     {% endif %}
-     
     </div>
   </body>
 </html>
