@@ -622,13 +622,23 @@ def find_kernel_debuginfo(kernelver, is_redhat):
         # Not found, get one from redhat debuginfo packages server, and return it 
         soft_name = "kernel-debuginfo-" + str(vers[0]) 
         log_info("Download %s" %(soft_name))
-        url = "http://10.117.173.243:5000/download/" + soft_name
+        # Choose rhel debuginfo packages server according to rhel_ver
+        rhel_ver = str(vers[0]).split('.')[-2]
+        if rhel_ver == "el6":
+            log_info("Download from rhel6 server")
+            url = "http://10.117.173.243:5000/download/" + soft_name
+        elif rhel_ver == "el7":
+            log_info("Download from rhel7 server")
+            url = "http://10.117.174.8:5000/download/" + soft_name
+        else:
+            log_info("Download from rhel5 server")
+            url = "http://10.117.175.174:5000/download/" + soft_name
         filename = soft_name + ".rpm"
         filepath = os.path.join(CONFIG["RepoDir"], "redhat", "Packages", filename)
-        wget = Popen(["wget", url, "-O", filepath])
+        wget = Popen(["wget", url])
         wget.wait()
         if os.path.isfile(filepath):
-            log_info("Download %s finished" %(soft_name))
+            log_info("Download %s finished" %(filepath))
             return filepath
 
     if ver.rt:
