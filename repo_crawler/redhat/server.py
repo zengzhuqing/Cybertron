@@ -7,7 +7,7 @@ app = Flask(__name__)
 
 @app.route("/")
 def index():
-    return "RedHat Server for downloading debuginfo packages!"
+    return "RedHat Server 5 for downloading debuginfo packages!"
 
 #TODO: add cleanup crontab 
 @app.route("/download/<version_name>")
@@ -16,8 +16,9 @@ def download(version_name):
    
     if os.path.isfile(filename):
         return send_file(filename, as_attachment=True)
-    
-    child = Popen(["yumdownloader", version_name], stdin=PIPE, stdout=PIPE, stderr=STDOUT)
+   
+    dest="--destdir=/repos/redhat/Packages" 
+    child = Popen(["yumdownloader", version_name, dest], stdin=PIPE, stdout=PIPE, stderr=STDOUT)
     log = child.communicate()[0]
     if child.wait():
         print "yumdownload run failed" 
@@ -25,10 +26,7 @@ def download(version_name):
     response = make_response(log)
     response.content_type = "text/plain"
 
-    if os.path.isfile(filename):
-        return send_file(filename, as_attachment=True)
-    else:
-        return response
+    return response
     
 if __name__ == "__main__":
     app.run(host='0.0.0.0', debug=True)
