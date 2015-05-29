@@ -97,6 +97,7 @@ KO_DEBUG_PARSER = re.compile("^.*/([a-zA-Z0-9_\-]+)\.ko\.debug$")
 KERNEL_RELEASE_PARSER = re.compile("^([0-9]+\.[0-9]+\.[0-9]+)-([0-9]+\.[^ \t]*)$")
 # OSRELEASE=2.6.32-209.el6.x86_64
 OSRELEASE_VAR_PARSER = re.compile("^OSRELEASE=([^%]*)$")
+REDHAT_PARSER = re.compile(".*\.build\.bos\.redhat\.com.*")
 
 DUMP_LEVEL_PARSER = re.compile("^[ \t]*dump_level[ \t]*:[ \t]*([0-9]+).*$")
 
@@ -561,7 +562,26 @@ def get_kernel_release(vmcore):
 
     return result
 
-def find_kernel_debuginfo(kernelver):
+def is_redhat(vmcore):
+
+    child = Popen(["strings", "-n", "10", vmcore], stdout=PIPE, stderr=STDOUT)
+    line = child.stdout.readline()
+    while line:
+        line = line.strip()
+
+        # OSRELEASE variable is defined in the vmcore,
+        # but crash was not able to find it (cross-arch)
+        match = REDHAT_PARSER.match(line)
+        if match:
+            child.stdout.close()
+            child.kill()
+            return True
+
+        line = child.stdout.readline()
+
+    return False
+
+def find_kernel_debuginfo(kernelver, is_redhat):
     vers = [kernelver]
 
     for canon_arch, derived_archs in ARCH_MAP.items():
@@ -573,18 +593,43 @@ def find_kernel_debuginfo(kernelver):
                 vers.append(cand)
 
     # search for the debuginfo RPM
-    for release in os.listdir(CONFIG["RepoDir"]):
+    if is_redhat == False:
+        for release in os.listdir(CONFIG["RepoDir"]):
+            for ver in vers:
+                testfile = os.path.join(CONFIG["RepoDir"], release, "Packages", ver.package_name(debug=True))
+                log_debug("Trying debuginfo file: %s" % testfile)
+                if os.path.isfile(testfile):
+                    return testfile
+
+                # should not happen, but anyway...
+                testfile = os.path.join(CONFIG["RepoDir"], release, ver.package_name(debug=True))
+                log_debug("Trying debuginfo file: %s" % testfile)
+                if os.path.isfile(testfile):
+                    return testfile
+    else:
         for ver in vers:
-            testfile = os.path.join(CONFIG["RepoDir"], release, "Packages", ver.package_name(debug=True))
+            testfile = os.path.join(CONFIG["RepoDir"], "redhat", "Packages", ver.package_name(debug=True))
             log_debug("Trying debuginfo file: %s" % testfile)
             if os.path.isfile(testfile):
                 return testfile
 
             # should not happen, but anyway...
-            testfile = os.path.join(CONFIG["RepoDir"], release, ver.package_name(debug=True))
+            testfile = os.path.join(CONFIG["RepoDir"], "redhat", ver.package_name(debug=True))
             log_debug("Trying debuginfo file: %s" % testfile)
             if os.path.isfile(testfile):
                 return testfile
+
+        # Not found, get one from redhat debuginfo packages server, and return it 
+        soft_name = "kernel-debuginfo-" + str(vers[0]) 
+        log_info("Download %s" %(soft_name))
+        url = "http://10.117.173.243:5000/download/" + soft_name
+        filename = soft_name + ".rpm"
+        filepath = os.path.join(CONFIG["RepoDir"], "redhat", "Packages", filename)
+        wget = Popen(["wget", url, "-O", filepath])
+        wget.wait()
+        if os.path.isfile(filepath):
+            log_info("Download %s finished" %(soft_name))
+            return filepath
 
     if ver.rt:
         basename = "kernel-rt"
@@ -648,7 +693,11 @@ def prepare_debuginfo(vmcore, chroot=None, kernelver=None):
     if kernelver is None:
         raise Exception, "Unable to determine kernel version"
 
-    debuginfo = find_kernel_debuginfo(kernelver)
+    log_info("Kernel Version: %s" % (kernelver))   
+    is_rhel = is_redhat(vmcore)
+    log_info("Is Redhat ? %d" %(is_rhel))
+ 
+    debuginfo = find_kernel_debuginfo(kernelver, is_rhel)
     if not debuginfo:
         raise Exception, "Unable to find debuginfo package"
 
