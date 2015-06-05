@@ -120,10 +120,11 @@
       </tr>
       {{unknownext}}
       <tr><td colspan="2">This is an interactive task</td></tr>
-      <tr><td colspan="2">You can jump to the chrooted shell: <a target=_blank href="http://cybertron.eng.vmware.com:8022">Chrooted Shell</a></td></tr>
-      <tr><td colspan="2">You can jump to the chrooted shell with:<code>retrace-server-interact {{taskid}} shell</code></td></tr>
+      <tr><td colspan="2">Open a online terminal to crack the coerdump: <a target=_blank href="http://cybertron.eng.vmware.com:8022/?task={{taskid}}">Chrooted Shell</a></td></tr>
+    <!--  <tr><td colspan="2">You can jump to the chrooted shell with:<code>retrace-server-interact {{taskid}} shell</code></td></tr>
       <tr><td colspan="2">You can jump directly to the debugger with: <code>retrace-server-interact {{taskid}} {{debuguer}}</code></td></tr>
       <tr><td colspan="2">See <code>man retrace-server-interact</code> for further information about cmdline flags</td></tr>
+    -->
     {% if kernellog_title %}
       <tr><td colspan="2"><a href="{{url_for("Index")}}{{taskid}}/kernellog">Show raw kernel log</a></td></tr>
     {% endif %}
@@ -155,6 +156,8 @@
             <th>Summary</th>
         </tr>
         -->
+    <table class="table table-hover">
+        <tr> <td>
         {% for item in vmbugzilla_matched %}
         <p><a target=_blank href="https://bugzilla.eng.vmware.com/show_bug.cgi?id={{item[0]}}">{{item[1]["summary"]}}</a></p>
         <!--
@@ -173,12 +176,20 @@
         </tr>
         --> 
         {% endfor %}
+        </td>
+	</tr>
+
     </table>
+
     <h2>RedHat KB matched</h2>
+    <table class="table table-hover">
     {% for item in rhkb_matched %}
+	<tr><td>
         <p><a target=_blank href={{item[0]}}>{{item[1]}}</a></p>
+	</td></tr>
     {% endfor %} 
     {% endif %}
+    </table>
     </div>
   </body>
 </html>
