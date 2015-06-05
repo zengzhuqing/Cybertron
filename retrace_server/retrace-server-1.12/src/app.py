@@ -39,6 +39,29 @@ def get_status_for_task_manager(task, _=lambda x: x):
 
     return status
 
+def get_bug_dir(bug_id):
+    bug_dir = '/cores/bugs/files/0/'
+    if bug_id:
+        for i in bug_id:
+            bug_dir += i + '/'
+        return bug_dir
+
+def get_files(d, fnfilter, dfilter, rel=True):
+    d = os.path.expanduser(d)
+    dirs = []
+    fns = []
+    for fn in sorted(os.listdir(d)):
+        ffn = os.path.join(d, fn)
+        if not rel:
+            fn = ffn
+        if os.path.isdir(ffn):
+            if dfilter(ffn):
+                dirs.append(fn)
+        else:
+            if fnfilter(ffn):
+                fns.append(fn)
+    return fns, dirs
+
 @application.route('/Logout', methods=['POST'])
 def Logout():
     """
@@ -226,8 +249,7 @@ def Start(task_id):
     redirect_url = "/%d" % (task.get_taskid())
     return redirect(redirect_url)
 
-@application.route('/')
-def Index():
+def get_main_elements():
     _ = parse_http_gettext("%s" % request.accept_languages,
                            "%s" % request.accept_charsets)
     
@@ -329,6 +351,18 @@ def Index():
     replace['status_str'] = status_str
     # spaces to keep the XML nicely aligned
 
+    ans = {}
+    ans["running"] = running
+    ans["finish"] = finished
+    ans["replace"] = replace
+    return ans 
+
+@application.route('/')
+def Index():
+    main_elements = get_main_elements()
+    running = main_elements["running"]
+    finished = main_elements["finish"]
+    replace = main_elements["replace"]
     return render_template("manager.html", running = running, finish = finished, **replace)
 
 @application.route('/<task_id>')
@@ -613,7 +647,41 @@ def UpdateNotify(task_id):
    
     url = "/%s" %(task_id)
     return redirect(url)
-    
+
+@application.route('/sfiles', methods=['POST'])
+def sfiles():
+    r = []
+    fnfilter = lambda fn: True
+    dfilter = lambda d: True
+    try:
+        d = urllib.unquote(request.form.get('dir', './'))
+        fns, dirs = get_files(d, fnfilter, dfilter, rel=True)
+        r = ['<ul class="jqueryFileTree" style="display: none;">']
+        for f in dirs:
+            ff = os.path.join(d, f)
+            r.append('<li class="directory collapsed">' \
+                    '<a href="#" rel="%s/">%s</a></li>' % (ff, f))
+        for f in fns:
+            ff = os.path.join(d, f)
+            e = os.path.splitext(f)[1][1:]  # get .ext and remove dot
+            r.append('<li class="file ext_%s">' \
+            '<a href="#" rel="%s">%s</a></li>' % (e, ff, f))
+        r.append('</ul>')
+    except Exception as E:
+        r.append('Could not load directory: %s' % (str(E)))
+    return ''.join(r)
+    #return render_template("manager.html", dirlist = ''.join(r))
+ 
+@application.route('/List', methods=['POST'])
+def List():
+    main_elements = get_main_elements()
+    running = main_elements["running"]
+    finished = main_elements["finish"]
+    replace = main_elements["replace"]
+    bug_dir = get_bug_dir(request.form["bugid"])
+
+    return render_template("manager.html", running = running, finish = finished, bug_dir = bug_dir, **replace)
+ 
 if __name__ == '__main__':
     application.debug = True
     application.run(host='0.0.0.0')

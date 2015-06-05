@@ -24,6 +24,29 @@
         font-family: monospace;
       }
     </style>
+    <link href="static/css/jqueryFileTree.css" rel="stylesheet"></link>
+    <script src="static/js/jquery.js"></script>
+    <script src="static/js/jqueryFileTree.js"></script>
+    <script>
+       {% if bug_dir %}
+       $(function() {
+            $("#dirlist").fileTree({
+                root: "{{bug_dir}}",
+                script: "{{ url_for('sfiles') }}"
+            }, 
+            function(file) { 
+                $.post("{{ url_for('Create') }}",
+                {
+                    custom_url:file
+                },
+                function(data, status){
+                    alert("Create task by " + file + "\nStatus: " + status);
+                });
+            });
+       });
+       {% endif %}
+    </script>
+    <script src="static/js/tabbed_form.js"></script>
   </head>
   <body>
     <nav class="navbar navbar-inverse navbar-fixed-top">
@@ -52,57 +75,94 @@
       </div>
       {% else %}
       <form method = "post" action = "{{url_for('Logout')}}" class="navbar-form navbar-right">
-      <!---
-        <a href="https://bugzilla.eng.vmware.com/enter_bug.cgi?product=CPD-Serviceability&category=ESX-Platform&component=cpdtools&found_in_product_name=CPD-Serviceability&found_in_version_name=1.0&assigned_to=zengz&bug_severity=serious&priority=P2" target="_blank"  class="btn btn-primary">Report a bug</a>
-    -->    
     <a href="https://vmwaresearch.vmware.com/search?proxystylesheet=vmlinksearch_frontend&getfields=*&site=People&q={{session.username}}@vmware.com" class="btn btn-info">Profile</a>
         <button type="summit" class="btn btn-success">Logout</button>
       </form>
       {% endif %}
     </nav>
-    <div class="container theme-showcase" role="main">
-    <!--<h1>{sitename}</h1>-->
-    <form method="post" action="{{ url_for('Create') }}" id="custom">
-    <!--
-      <div>
-        <span class="formsubhead">Kernel version (e.g. <code>2.6.32-287.el6.x86_64</code>, empty to autodetect):</span> <input type="text" name="vra" />
-        <input type="checkbox" checked="checked" name="debug" class="checkbox" /><span class="formsubhead"> Be more verbose in case of error</span>
-      </div>
-      -->
-     <div class="row">
-         <h1 class="center">Create New Task</h1>
-        <!--<span class="formhead">Custom core location:</span> -->
-        <div class="input-group col-xs-12 center">    
-            <input type="text" class="form-control" name="custom_url" placeholder="Custom core location" required autofocus/></input>
-            <div class="input-group-btn">
-                <button type="submit" class="btn btn-success">Create</button>
-            </div>
-        </div>
-        <div class="col-xs-12 center">Any URL that <code>wget</code> can download or a local path (<code>file:///foo/bar</code> or just <code>/foo/bar</code>)
-        </div>
-      </div>
-    </form>
-    <!--
-      <div id="left">
-        <div id="available">
-          <table>
-            <tr>
-              <th class="tablename">{available_str}</th>
-            </tr>
-            {available}
-          </table>
-        </div>
-      </div>
-      -->
-      <div class="page-header">
-        </div>
-        <h1>All tasks</h1>
+    <div class="container" role="main">
+        <div class="container">
+    	<div class="row">
+			<div class="col-xs-12">
+				<div class="panel panel-login">
+					<div class="panel-heading">
+						<div class="row">
+							<div class="col-xs-6">
+								<a href="#" class="active" id="create-by-bugid-form-link">Create By Bugid</a>
+							</div>
+							<div class="col-xs-6">
+								<a href="#" id="create-by-url-form-link">Create By URL</a>
+							</div>
+						</div>
+						<hr>
+					</div>
+					<div class="panel-body">
+						<div class="row">
+							<div class="col-xs-12">
+								<form id="create-by-bugid-form" method="post" action="{{ url_for('List') }}" role="form" style="display: block;">
+                                    <h1 class="center">Create New Task</h1>
+                                    <div class="input-group col-xs-12 center">    
+                                        <input type="text" class="form-control" name="bugid" placeholder="Bugid from Bugzilla" required autofocus/></input>
+                                        <div class="input-group-btn">
+                                            <button type="summit" class="btn btn-success">Browse</button>
+                                        </div>
+                                    </div>
+                                    {% if bug_dir %}
+                                    <h3>Please Choose a vmss file to create a task</h3>
+                                    {% endif %}
+                                    <div id="dirlist"></div>
+								</form>
+								<form id="create-by-url-form" method="post" action="{{ url_for('Create') }}" role="form" style="display: none;">
+                                    <h1 class="center">Create New Task</h1>
+                                    <div class="input-group col-xs-12 center">    
+                                        <input type="text" class="form-control" name="custom_url" placeholder="Custom core location" required autofocus/></input>
+                                        <div class="input-group-btn">
+                                            <button type="submit" class="btn btn-success">Create</button>
+                                        </div>
+                                    </div>
+                                    <div class="col-xs-12 center">Any URL that <code>wget</code> can download or a local path (<code>file:///foo/bar</code> or just <code>/foo/bar</code>)</div>
+								</form>
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+	    </div>
         <!--
-        <form method="get" id="filter">
-            <input type="text" name="filter" />
-            <input type="submit" value="Filter" class="submit" />
+        <form id="create_by_url" method="post" action="{{ url_for('Create') }}" id="custom">
+            <div class="row">
+                <h1 class="center">Create New Task</h1>
+                <div class="input-group col-xs-12 center">    
+                    <input type="text" class="form-control" name="custom_url" placeholder="Custom core location" required autofocus/></input>
+                    <div class="input-group-btn">
+                        <button type="submit" class="btn btn-success">Create</button>
+                    </div>
+                </div>
+                <div class="col-xs-12 center">Any URL that <code>wget</code> can download or a local path (<code>file:///foo/bar</code> or just <code>/foo/bar</code>)</div>
+            </div>
         </form>
+       
+        <form id="create_by_bugid" method="post" action="{{ url_for('List') }}" id="custom">
+            <div class="row">
+                <h1 class="center">Create New Task By bugid</h1>
+                <BR>
+                <div class="input-group col-xs-12 center">    
+                    <input type="text" class="form-control" name="bugid" placeholder="Bugid from Bugzilla" required autofocus/></input>
+                    <div class="input-group-btn">
+                        <button type="summit" class="btn btn-success">Browse</button>
+                    </div>
+                </div>
+            </div>
+        </form>
+        {% if bug_dir %}
+        <h3>Please Choose a vmss file to create a task</h3>
+        {% endif %}
+        <div id="dirlist"></div>
         -->
+      
+        <div class="page-header"></div>
+        <h1>All tasks</h1>
         <div id="running">
           <table class="table table-striped">
             <tr>
@@ -139,10 +199,11 @@
               <th>{{files_str}}</th>
               <th class="timestamp">{{finishtime_str}}</th>
             </tr>
+            <BR>
 	   {% for tool in finish %}
             <tr class="{{ tool["status"] }}"> 
             <td class="taskid"> 
-            	<a href="{{ tool["baseurl"] }}{{ tool["taskid"]}}">{{tool["taskid"]}}</a> 
+            	<a href="{{ url_for('Index') }}{{ tool["taskid"]}}">{{tool["taskid"]}}</a> 
             </td>
             <td>{{ tool["caseno"] }}</td> 
             <td>{{ tool["files"] }}</td> 
@@ -150,7 +211,7 @@
             </tr> 
            {% endfor %}
           </table>
-      </div>
+        </div>
     </div>
   </body>
 </html>
