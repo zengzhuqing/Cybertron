@@ -9,6 +9,8 @@
     <link href="static/css/bootstrap.min.css" rel="stylesheet">
     <link href="static/css/bootstrap-theme.min.css" rel="stylesheet">
     <link href="static/css/theme.css" rel="stylesheet">
+    <!-- TODO fix bootstrap install -->
+    <link rel="stylesheet" href="http://maxcdn.bootstrapcdn.com/bootstrap/3.3.4/css/bootstrap.min.css">
     <style type="text/css">
       .center
       {
@@ -22,6 +24,15 @@
       code
       {
         font-family: monospace;
+      }
+      .txt-red{
+        color:red;
+      }
+      .txt-green{
+        color:green;
+      }
+      .active{
+        color:blue;
       }
     </style>
     <link href="static/css/jqueryFileTree.css" rel="stylesheet"></link>
@@ -83,16 +94,17 @@
     <div class="container" role="main">
         <div class="container">
     	<div class="row">
-			<div class="col-xs-12">
+    	    <div class="col-xs-2"> </div>
+			<div class="col-xs-8">
 				<div class="panel panel-login">
 					<div class="panel-heading">
 						<div class="row">
 							<div class="col-xs-6">
-								<a href="#" class="active" id="create-by-bugid-form-link">Create By Bugid</a>
+								    <a href="#" class="active" id="create-by-bugid-form-link">Create By Bugid</a>
 							</div>
 							<div class="col-xs-6">
-								<a href="#" id="create-by-url-form-link">Create By URL</a>
-							</div>
+								    <a href="#" id="create-by-url-form-link">Create By URL</a>
+            				</div>
 						</div>
 						<hr>
 					</div>
@@ -197,6 +209,7 @@
               <th class="taskid">{{taskid_str}}</th>
               <th class="caseno">{{caseno_str}}</th>
               <th>{{files_str}}</th>
+              <th>Status</th>
               <th class="timestamp">{{finishtime_str}}</th>
             </tr>
             <BR>
@@ -206,7 +219,14 @@
             	<a href="{{ url_for('Index') }}{{ tool["taskid"]}}">{{tool["taskid"]}}</a> 
             </td>
             <td>{{ tool["caseno"] }}</td> 
-            <td>{{ tool["files"] }}</td> 
+            <td>{{ tool["files"] }}</td>
+            <td>
+                {% if tool["status"] == "success" %}
+                <i class="glyphicon glyphicon-ok txt-green"></i>
+                {% else %}
+                <i class="glyphicon glyphicon-remove txt-red"></i>
+                {% endif %}
+            </td>
             <td>{{ tool["finishtime"] }}</td>
             </tr> 
            {% endfor %}

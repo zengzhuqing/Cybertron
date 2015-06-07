@@ -109,18 +109,12 @@
             </form>
         </td>
       </tr>
-      <tr>
-         <th>Case no.:</th>
-         <td>
-            <form method="post" action="{{url_for("Index")}}{{taskid}}/updatecaseno">
-                <input type="text" name="caseno" value="{{currentcaseno}}" />
-                <input type="submit" value="Update case no." class="button" />
-            </form>
-         </td>
-      </tr>
       {{unknownext}}
-      <tr><td colspan="2">This is an interactive task</td></tr>
-      <tr><td colspan="2">Open a online terminal to crack the coerdump: <a target=_blank href="http://cybertron.eng.vmware.com:8022/?task={{taskid}}">Chrooted Shell</a></td></tr>
+      <tr><td colspan="2">Open a online terminal to crack the coerdump: 
+        <a target=_blank href="http://cybertron.eng.vmware.com:8022/?task={{taskid}}">
+            <img src="static/icons/terminal.png" style="width:24px;height:24px;border:0">
+        </a>
+      </td></tr>
     <!--  <tr><td colspan="2">You can jump to the chrooted shell with:<code>retrace-server-interact {{taskid}} shell</code></td></tr>
       <tr><td colspan="2">You can jump directly to the debugger with: <code>retrace-server-interact {{taskid}} {{debuguer}}</code></td></tr>
       <tr><td colspan="2">See <code>man retrace-server-interact</code> for further information about cmdline flags</td></tr>
@@ -139,6 +133,7 @@
     <h2>{{kernellog_title}}</h2>
     <textarea class="backtrace">{{kernellog_content}}</textarea>
     -->
+    {% if vmbugzilla_matched|length %}
     <h2>VMware Bugzilla matched</h2>
     <!-- 
    <table class="table table-striped">
@@ -157,8 +152,8 @@
         </tr>
         -->
     <table class="table table-hover">
-        <tr> <td>
         {% for item in vmbugzilla_matched %}
+        <tr> <td>
         <p><a target=_blank href="https://bugzilla.eng.vmware.com/show_bug.cgi?id={{item[0]}}">{{item[1]["summary"]}}</a></p>
         <!--
         <tr>
@@ -175,12 +170,11 @@
             <td>{{ item[1]["summary"] }}</td>
         </tr>
         --> 
-        </td>
-	</tr>
+        </td> </tr>
         {% endfor %}
-
     </table>
-
+    {% endif %}
+    {% if rhkb_matched|length %}
     <h2>RedHat KB matched</h2>
     <table class="table table-hover">
     {% for item in rhkb_matched %}
@@ -190,6 +184,7 @@
     {% endfor %} 
     {% endif %}
     </table>
+    {% endif %}
     </div>
   </body>
 </html>
