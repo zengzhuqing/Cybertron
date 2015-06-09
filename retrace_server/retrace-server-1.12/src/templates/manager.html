@@ -39,20 +39,28 @@
     <script src="static/js/jquery.js"></script>
     <script src="static/js/jqueryFileTree.js"></script>
     <script>
+        function confirm_create(file){
+           if(confirm("Do you really want to create task?") == true)
+           {
+               $.post("{{ url_for('Create') }}",
+               {
+                   custom_url:file
+               },
+               function(data, status){
+                   confirm("Create task by " + file + "\nStatus: " + status);
+               });
+           }
+       }
+    </script>
+    <script>
        {% if bug_dir %}
        $(function() {
             $("#dirlist").fileTree({
                 root: "{{bug_dir}}",
                 script: "{{ url_for('sfiles') }}"
             }, 
-            function(file) { 
-                $.post("{{ url_for('Create') }}",
-                {
-                    custom_url:file
-                },
-                function(data, status){
-                    alert("Create task by " + file + "\nStatus: " + status);
-                });
+            function(file) {
+                confirm_create(file);
             });
        });
        {% endif %}
