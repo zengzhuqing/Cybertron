@@ -41,6 +41,9 @@ TASK_RETRACE, TASK_DEBUG, TASK_VMCORE, TASK_RETRACE_INTERACTIVE, \
 TASK_TYPES = [TASK_RETRACE, TASK_DEBUG, TASK_VMCORE,
               TASK_RETRACE_INTERACTIVE, TASK_VMCORE_INTERACTIVE]
 
+CENTOS, RHEL, SUSE = xrange(3)
+RELEASE_TYPES = [CENTOS, RHEL, SUSE]
+
 ARCHIVE_UNKNOWN, ARCHIVE_GZ, ARCHIVE_ZIP, \
   ARCHIVE_BZ2, ARCHIVE_XZ, ARCHIVE_TAR, \
   ARCHIVE_7Z, ARCHIVE_LZOP = xrange(8)
@@ -97,7 +100,8 @@ KO_DEBUG_PARSER = re.compile("^.*/([a-zA-Z0-9_\-]+)\.ko\.debug$")
 KERNEL_RELEASE_PARSER = re.compile("^([0-9]+\.[0-9]+\.[0-9]+)-([0-9]+\.[^ \t]*)$")
 # OSRELEASE=2.6.32-209.el6.x86_64
 OSRELEASE_VAR_PARSER = re.compile("^OSRELEASE=([^%]*)$")
-REDHAT_PARSER = re.compile(".*\.build\.bos\.redhat\.com.*")
+REDHAT_PARSER = re.compile(".*\.bos\.redhat\.com.*")
+OPENSUSE_PARSER = re.compile(".*build@suse\.de.*")
 
 DUMP_LEVEL_PARSER = re.compile("^[ \t]*dump_level[ \t]*:[ \t]*([0-9]+).*$")
 
@@ -581,106 +585,28 @@ def is_redhat(vmcore):
 
     return False
 
-def find_kernel_debuginfo(kernelver, is_redhat):
-    vers = [kernelver]
+def is_opensuse(vmcore):
 
-    for canon_arch, derived_archs in ARCH_MAP.items():
-        if kernelver.arch == canon_arch:
-            vers = []
-            for arch in derived_archs:
-                cand = KernelVer(str(kernelver))
-                cand.arch = arch
-                vers.append(cand)
+    child = Popen(["strings", "-n", "10", vmcore], stdout=PIPE, stderr=STDOUT)
+    line = child.stdout.readline()
+    while line:
+        line = line.strip()
 
-    # search for the debuginfo RPM
-    if is_redhat == False:
-        for release in os.listdir(CONFIG["RepoDir"]):
-            for ver in vers:
-                testfile = os.path.join(CONFIG["RepoDir"], release, "Packages", ver.package_name(debug=True))
-                log_debug("Trying debuginfo file: %s" % testfile)
-                if os.path.isfile(testfile):
-                    return testfile
+        # OSRELEASE variable is defined in the vmcore,
+        # but crash was not able to find it (cross-arch)
+        match = OPENSUSE_PARSER.match(line)
+        if match:
+            child.stdout.close()
+            child.kill()
+            return True
 
-                # should not happen, but anyway...
-                testfile = os.path.join(CONFIG["RepoDir"], release, ver.package_name(debug=True))
-                log_debug("Trying debuginfo file: %s" % testfile)
-                if os.path.isfile(testfile):
-                    return testfile
-    else:
-        for ver in vers:
-            testfile = os.path.join(CONFIG["RepoDir"], "redhat", "Packages", ver.package_name(debug=True))
-            log_debug("Trying debuginfo file: %s" % testfile)
-            if os.path.isfile(testfile):
-                return testfile
+        line = child.stdout.readline()
 
-            # should not happen, but anyway...
-            testfile = os.path.join(CONFIG["RepoDir"], "redhat", ver.package_name(debug=True))
-            log_debug("Trying debuginfo file: %s" % testfile)
-            if os.path.isfile(testfile):
-                return testfile
-
-        # Not found, get one from redhat debuginfo packages server, and return it 
-        soft_name = "kernel-debuginfo-" + str(vers[0]) 
-        log_info("Download %s" %(soft_name))
-        # Choose rhel debuginfo packages server according to rhel_ver
-        rhel_ver = str(vers[0]).split('.')[-2]
-        if rhel_ver == "el6":
-            log_info("Download from rhel6 server")
-            url = "http://10.117.173.243:5000/download/" + soft_name
-        elif rhel_ver == "el7":
-            log_info("Download from rhel7 server")
-            url = "http://10.117.174.8:5000/download/" + soft_name
-        else:
-            log_info("Download from rhel5 server")
-            url = "http://10.117.175.174:5000/download/" + soft_name
-        filename = soft_name + ".rpm"
-        filepath = os.path.join(CONFIG["RepoDir"], "redhat", "Packages", filename)
-        wget = Popen(["wget", url])
-        wget.wait()
-        if os.path.isfile(filepath):
-            log_info("Download %s finished" %(filepath))
-            return filepath
-
-    if ver.rt:
-        basename = "kernel-rt"
-    else:
-        basename = "kernel"
-
-    # koji-like root
-    for ver in vers:
-        testfile = os.path.join(CONFIG["KojiRoot"], "packages", basename, ver.version, ver.release, ver._arch, ver.package_name(debug=True))
-        log_debug("Trying debuginfo file: %s" % testfile)
-        if os.path.isfile(testfile):
-            return testfile
-
-    if CONFIG["WgetKernelDebuginfos"]:
-        downloaddir = os.path.join(CONFIG["RepoDir"], "download")
-        if not os.path.isdir(downloaddir):
-            oldmask = os.umask(0007)
-            os.makedirs(downloaddir)
-            os.umask(oldmask)
-
-        for ver in vers:
-            pkgname = ver.package_name(debug=True)
-            url = CONFIG["KernelDebuginfoURL"].replace("$VERSION", ver.version).replace("$RELEASE", ver.release).replace("$ARCH", ver._arch).replace("$BASENAME", basename)
-            if not url.endswith("/"):
-                url += "/"
-            url += pkgname
-
-            log_debug("Trying debuginfo URL: %s" % url)
-            with open(os.devnull, "w") as null:
-                retcode = call(["wget", "-nv", "-P", downloaddir, url], stdout=null, stderr=null)
-
-            if retcode == 0:
-                return os.path.join(downloaddir, pkgname)
-
-    return None
+    return False
 
 def cache_files_from_debuginfo(debuginfo, basedir, files):
     # important! if empty list is specified, the whole debuginfo would be unpacked
-    if not files:
-        return
-
+    # Fixed by zengzhuqing, if empty, extract all
     if not os.path.isfile(debuginfo):
         raise Exception, "Given debuginfo file does not exist"
 
@@ -695,96 +621,6 @@ def cache_files_from_debuginfo(debuginfo, basedir, files):
         rpm2cpio.wait()
         cpio.wait()
         rpm2cpio.stdout.close()
-
-def prepare_debuginfo(vmcore, chroot=None, kernelver=None):
-    if kernelver is None:
-        kernelver = get_kernel_release(vmcore)
-
-    if kernelver is None:
-        raise Exception, "Unable to determine kernel version"
-
-    log_info("Kernel Version: %s" % (kernelver))   
-    is_rhel = is_redhat(vmcore)
-    log_info("Is Redhat ? %d" %(is_rhel))
- 
-    debuginfo = find_kernel_debuginfo(kernelver, is_rhel)
-    if not debuginfo:
-        raise Exception, "Unable to find debuginfo package"
-
-    if "EL" in kernelver.release:
-        if kernelver.flavour is None:
-            pattern = "EL/vmlinux"
-        else:
-            pattern = "EL%s/vmlinux" % kernelver.flavour
-    else:
-        pattern = "/vmlinux"
-
-    vmlinux_path = None
-    debugfiles = {}
-    child = Popen(["rpm", "-qpl", debuginfo], stdout=PIPE)
-    lines = child.communicate()[0].splitlines()
-    for line in lines:
-        if line.endswith(pattern):
-            vmlinux_path = line
-            continue
-
-        match = KO_DEBUG_PARSER.match(line)
-        if not match:
-            continue
-
-        # only pick the correct flavour for el4
-        if "EL" in kernelver.release:
-            if kernelver.flavour is None:
-                pattern2 = "EL/"
-            else:
-                pattern2 = "EL%s/" % kernelver.flavour
-
-            if not pattern2 in os.path.dirname(line):
-                continue
-
-        # '-' in file name is transformed to '_' in module name
-        debugfiles[match.group(1).replace("-", "_")] = line
-
-    debugdir_base = os.path.join(CONFIG["RepoDir"], "kernel", kernelver.arch)
-    if not os.path.isdir(debugdir_base):
-        os.makedirs(debugdir_base)
-
-    vmlinux = os.path.join(debugdir_base, vmlinux_path.lstrip("/"))
-    if not os.path.isfile(vmlinux):
-        cache_files_from_debuginfo(debuginfo, debugdir_base, [vmlinux_path])
-        if not os.path.isfile(vmlinux):
-            raise Exception, "Caching vmlinux failed"
-
-    if chroot:
-        with open(os.devnull, "w") as null:
-            child = Popen(["/usr/bin/mock", "--configdir", chroot, "shell",
-                           "--", "crash", "-s", vmcore, vmlinux],
-                           stdin=PIPE, stdout=PIPE, stderr=null)
-    else:
-        child = Popen(["crash", "-s", vmcore, vmlinux], stdin=PIPE, stdout=PIPE, stderr=STDOUT)
-    stdout = child.communicate("mod\nquit")[0]
-    if child.returncode:
-        log_warn("Unable to list modules: crash exited with %d:\n%s" % (child.returncode, stdout))
-        return vmlinux
-
-    modules = []
-    for line in stdout.splitlines():
-        # skip header
-        if "NAME" in line:
-            continue
-
-        if " " in line:
-            modules.append(line.split()[1])
-
-    todo = []
-    for module in modules:
-        if module in debugfiles and \
-           not os.path.isfile(os.path.join(debugdir_base, debugfiles[module].lstrip("/"))):
-            todo.append(debugfiles[module])
-
-    cache_files_from_debuginfo(debuginfo, debugdir_base, todo)
-
-    return vmlinux
 
 def get_vmcore_dump_level(task, vmlinux=None):
     vmcore_path = os.path.join(task.get_savedir(), "crash", "vmcore")
@@ -1249,23 +1085,6 @@ def check_run(cmd):
     if child.wait():
         raise Exception, "%s exitted with %d: %s" % (cmd[0], child.returncode, stdout)
 
-def strip_vmcore(vmcore, kernelver=None):
-    try:
-        vmlinux = prepare_debuginfo(vmcore, kernelver=kernelver)
-    except Exception as ex:
-        log_warn("prepare_debuginfo failed: %s" % ex)
-        return
-
-    newvmcore = "%s.stripped" % vmcore
-    retcode = call(["makedumpfile", "-c", "-d", "%d" % CONFIG["VmcoreDumpLevel"],
-                    "-x", vmlinux, "--message-level", "0", vmcore, newvmcore])
-    if retcode:
-        log_warn("makedumpfile exited with %d" % retcode)
-        if os.path.isfile(newvmcore):
-            os.unlink(newvmcore)
-    else:
-        os.rename(newvmcore, vmcore)
-
 def move_dir_contents(source, dest):
     for filename in os.listdir(source):
         path = os.path.join(source, filename)
@@ -1398,6 +1217,7 @@ class RetraceTask:
     STARTED_FILE = "started_time"
     STATUS_FILE = "status"
     TYPE_FILE = "type"
+    RELEASE_FILE = "release"
     URL_FILE = "url"
 
     def __init__(self, taskid=None):
@@ -1604,6 +1424,22 @@ class RetraceTask:
 
         self.set_atomic(RetraceTask.TYPE_FILE, str(newtype))
 
+    def get_release(self):
+        """Returns release type. If RELEASE_FILE is missing,
+        task is considered standard CENTOS."""
+        result = self.get(RetraceTask.RELEASE_FILE, maxlen=8)
+        if result is None:
+            return CENTOS
+
+        return int(result)
+
+    def set_release(self, newtype):
+        """Atomically writes given type into RELEASE_FILE."""
+        if not newtype in RELEASE_TYPES:
+            newtype = CENTOS
+
+        self.set_atomic(RetraceTask.RELEASE_FILE, str(newtype))
+
     def has_backtrace(self):
         """Verifies whether BACKTRACE_FILE is present in the task directory."""
         return self.has(RetraceTask.BACKTRACE_FILE)
@@ -1762,6 +1598,274 @@ class RetraceTask:
                                        human_readable_size(self._progress_current),
                                        self._progress_total_str)
         self.set_atomic(RetraceTask.PROGRESS_FILE, progress)
+
+
+    def prepare_debuginfo(self, vmcore, chroot=None, kernelver=None):
+        log_info("Test in prepare_debuginfo")
+        if kernelver is None:
+            kernelver = get_kernel_release(vmcore)
+
+        if kernelver is None:
+            raise Exception, "Unable to determine kernel version"
+
+        log_info("Kernel Version: %s" % (kernelver))   
+        is_rhel = is_redhat(vmcore)
+        log_info("Is Redhat ? %d" %(is_rhel))
+        is_suse = is_opensuse(vmcore)
+        log_info("Is OpenSuse ? %d" %(is_suse))
+        
+        # update release 
+        if is_rhel:
+            self.set_release(RHEL)
+        elif is_suse:
+            self.set_release(SUSE)
+        else:
+            self.set_release(CENTOS) 
+
+        debuginfo = self.find_kernel_debuginfo(kernelver)
+        if not debuginfo:
+            raise Exception, "Unable to find debuginfo package"
+
+        # for suse only
+        if self.get_release() == SUSE:
+            # Just extrace all files of the two packages
+            # TODO: vmlinux should be extrace(with gz)
+            debugdir_base = os.path.join(CONFIG["RepoDir"], "kernel", kernelver.arch)
+            for pack in debuginfo:
+                cache_files_from_debuginfo(pack, debugdir_base, [])
+                    
+            tmp = str(kernelver).split('-',2) 
+            ver = tmp[0]
+            rel = tmp[1]
+
+            ans = []
+            base_vmlinux_name = "vmlinux-%s-%s-default" %(ver, rel)
+            cmd = "ls " + os.path.join(debugdir_base, "boot", base_vmlinux_name)
+            child = Popen(["bash", "-c", cmd], stdin=None, stdout=PIPE, stderr=None)
+            testfile = child.communicate()[0][0:-1] #strip '\n'
+            if os.path.isfile(testfile):
+                log_info("Add base vmlinux file:%s" %(testfile))
+                ans.append(testfile)
+            
+            debug_vmlinux_name = "vmlinux-%s-%s-default.debug" %(ver, rel)
+            cmd = "ls " + os.path.join(debugdir_base, "usr", "lib", "debug","boot", debug_vmlinux_name)
+            child = Popen(["bash", "-c", cmd], stdin=None, stdout=PIPE, stderr=None)
+            testfile = child.communicate()[0][0:-1] #strip '\n'
+            if os.path.isfile(testfile):
+                log_info("Add debug vmlinux file:%s" %(testfile))
+                ans.append(testfile)
+            return ans
+
+        # for others
+        if "EL" in kernelver.release:
+            if kernelver.flavour is None:
+                pattern = "EL/vmlinux"
+            else:
+                pattern = "EL%s/vmlinux" % kernelver.flavour
+        else:
+            pattern = "/vmlinux"
+
+	    vmlinux_path = None
+	    debugfiles = {}
+	    child = Popen(["rpm", "-qpl", debuginfo], stdout=PIPE)
+	    lines = child.communicate()[0].splitlines()
+	    for line in lines:
+	        if line.endswith(pattern):
+	            vmlinux_path = line
+	            continue
+	
+	        match = KO_DEBUG_PARSER.match(line)
+	        if not match:
+	            continue
+	
+	        # only pick the correct flavour for el4
+	        if "EL" in kernelver.release:
+	            if kernelver.flavour is None:
+	                pattern2 = "EL/"
+	            else:
+	                pattern2 = "EL%s/" % kernelver.flavour
+	
+	            if not pattern2 in os.path.dirname(line):
+	                continue
+	
+	        # '-' in file name is transformed to '_' in module name
+	        debugfiles[match.group(1).replace("-", "_")] = line
+	
+	    debugdir_base = os.path.join(CONFIG["RepoDir"], "kernel", kernelver.arch)
+	    if not os.path.isdir(debugdir_base):
+	        os.makedirs(debugdir_base)
+	
+	    vmlinux = os.path.join(debugdir_base, vmlinux_path.lstrip("/"))
+	    if not os.path.isfile(vmlinux):
+	        cache_files_from_debuginfo(debuginfo, debugdir_base, [vmlinux_path])
+	        if not os.path.isfile(vmlinux):
+	            raise Exception, "Caching vmlinux failed"
+	
+	    if chroot:
+	        with open(os.devnull, "w") as null:
+	            child = Popen(["/usr/bin/mock", "--configdir", chroot, "shell",
+	                           "--", "crash", "-s", vmcore, vmlinux],
+	                           stdin=PIPE, stdout=PIPE, stderr=null)
+	    else:
+	        child = Popen(["crash", "-s", vmcore, vmlinux], stdin=PIPE, stdout=PIPE, stderr=STDOUT)
+	    stdout = child.communicate("mod\nquit")[0]
+	    if child.returncode:
+	        log_warn("Unable to list modules: crash exited with %d:\n%s" % (child.returncode, stdout))
+	        return [vmlinux]
+	
+	    modules = []
+	    for line in stdout.splitlines():
+	        # skip header
+	        if "NAME" in line:
+	            continue
+	
+	        if " " in line:
+	            modules.append(line.split()[1])
+	
+	    todo = []
+	    for module in modules:
+	        if module in debugfiles and \
+	           not os.path.isfile(os.path.join(debugdir_base, debugfiles[module].lstrip("/"))):
+	            todo.append(debugfiles[module])
+	
+	    cache_files_from_debuginfo(debuginfo, debugdir_base, todo)
+	
+	    return [vmlinux]
+
+    def find_kernel_debuginfo(self, kernelver):
+        vers = [kernelver]
+
+        for canon_arch, derived_archs in ARCH_MAP.items():
+            if kernelver.arch == canon_arch:
+                vers = []
+                for arch in derived_archs:
+                    cand = KernelVer(str(kernelver))
+                    cand.arch = arch
+                    vers.append(cand)
+
+        # search for the debuginfo RPM
+        if self.get_release() == SUSE:
+            # for suse
+            for release in os.listdir(CONFIG["RepoDir"]):
+                for ver in vers:
+                    ans = []
+                    arch = ver.arch
+                    tmp = str(ver).split('-',2) 
+                    ver1 = tmp[0]
+                    rel = tmp[1]
+
+                    debug_package_name = "kernel-default-debuginfo-%s-%s*.%s.rpm" %(ver1, rel, arch)
+                    cmd = "ls " + os.path.join(CONFIG["RepoDir"], release, "Packages", debug_package_name)
+                    child = Popen(["bash", "-c", cmd], stdin=None, stdout=PIPE, stderr=None)
+                    testfile = child.communicate()[0][0:-1] #strip '\n'
+                    log_debug("Trying debuginfo file: %s" % testfile)
+                    print "Trying debuginfo file: %s" % testfile
+                    if os.path.isfile(testfile):
+                        ans.append(testfile)
+
+                    base_package_name = "kernel-default-base-%s-%s*.%s.rpm" %(ver1, rel, arch) 
+                    cmd = "ls " + os.path.join(CONFIG["RepoDir"], release, "Packages", base_package_name)
+                    child = Popen(["bash", "-c", cmd], stdin=None, stdout=PIPE, stderr=None)
+                    testfile = child.communicate()[0][0:-1] #strip '\n'
+                    log_debug("Trying debuginfo file: %s" % testfile)
+                    print "Trying debuginfo file: %s" % testfile
+                    if os.path.isfile(testfile):
+                        ans.append(testfile)
+
+                    return ans 
+        elif self.get_release() == CENTOS:
+            for release in os.listdir(CONFIG["RepoDir"]):
+                for ver in vers:
+                    testfile = os.path.join(CONFIG["RepoDir"], release, "Packages", ver.package_name(debug=True))
+                    log_debug("Trying debuginfo file: %s" % testfile)
+                    if os.path.isfile(testfile):
+                        return testfile
+        else:
+            for ver in vers:
+                testfile = os.path.join(CONFIG["RepoDir"], "redhat", "Packages", ver.package_name(debug=True))
+                log_info("Trying debuginfo file: %s" %(testfile))
+                if os.path.isfile(testfile):
+                    return testfile
+        
+            # Not found, get one from redhat debuginfo packages server, and return it 
+            soft_name = "kernel-debuginfo-" + str(vers[0]) 
+            log_info("Download %s" %(soft_name))
+            # Choose rhel debuginfo packages server according to rhel_ver
+            rhel_ver = str(vers[0]).split('.')[-2]
+            if rhel_ver == "el6":
+                log_info("Download from rhel6 server")
+                url = "http://10.117.173.243:5000/download/" + soft_name
+            elif rhel_ver == "el7":
+                log_info("Download from rhel7 server")
+                url = "http://10.117.174.8:5000/download/" + soft_name
+            else:
+                log_info("Download from rhel5 server")
+                url = "http://10.117.175.174:5000/download/" + soft_name
+            filename = soft_name + ".rpm"
+            filepath = os.path.join(CONFIG["RepoDir"], "redhat", "Packages", filename)
+            log_info("url: %s" %(url))
+            wget = Popen(["wget", url])
+            #log_info(wget.communicate()[0]) 
+            wget.wait()
+            if os.path.isfile(filepath):
+                log_info("Download %s finished" %(filepath))
+                return filepath
+
+        if ver.rt:
+            basename = "kernel-rt"
+        else:
+            basename = "kernel"
+
+        # koji-like root
+        for ver in vers:
+            testfile = os.path.join(CONFIG["KojiRoot"], "packages", basename, ver.version, ver.release, ver._arch, ver.package_name(debug=True))
+            log_debug("Trying debuginfo file: %s" % testfile)
+            if os.path.isfile(testfile):
+                return testfile
+
+        if CONFIG["WgetKernelDebuginfos"]:
+            downloaddir = os.path.join(CONFIG["RepoDir"], "download")
+            if not os.path.isdir(downloaddir):
+                oldmask = os.umask(0007)
+                os.makedirs(downloaddir)
+                os.umask(oldmask)
+
+            for ver in vers:
+                pkgname = ver.package_name(debug=True)
+                url = CONFIG["KernelDebuginfoURL"].replace("$VERSION", ver.version).replace("$RELEASE", ver.release).replace("$ARCH", ver._arch).replace("$BASENAME", basename)
+                if not url.endswith("/"):
+                    url += "/"
+                url += pkgname
+
+                log_debug("Trying debuginfo URL: %s" % url)
+                with open(os.devnull, "w") as null:
+                    retcode = call(["wget", "-nv", "-P", downloaddir, url], stdout=null, stderr=null)
+
+                if retcode == 0:
+                    return os.path.join(downloaddir, pkgname)
+
+        return None
+
+    def strip_vmcore(self, vmcore, kernelver=None):
+        try:
+            vmlinux = self.prepare_debuginfo(vmcore, kernelver=kernelver)
+        except Exception as ex:
+            log_warn("prepare_debuginfo failed: %s" % ex)
+            return
+
+        # for suse
+        if vmlinux == None:
+            return
+
+        newvmcore = "%s.stripped" % vmcore
+        retcode = call(["makedumpfile", "-c", "-d", "%d" % CONFIG["VmcoreDumpLevel"],
+                    "-x", vmlinux, "--message-level", "0", vmcore, newvmcore])
+        if retcode:
+            log_warn("makedumpfile exited with %d" % retcode)
+            if os.path.isfile(newvmcore):
+                os.unlink(newvmcore)
+        else:
+            os.rename(newvmcore, vmcore)
 
     def download_remote(self, unpack=True, timeout=0, kernelver=None):
         """Downloads all remote resources and returns a list of errors."""

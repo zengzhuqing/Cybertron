@@ -512,7 +512,8 @@ def start_vmcore():
 
         # no locks required, mock locks itself
         try:
-            vmlinux = prepare_debuginfo(vmcore, cfgdir, kernelver=cmdline.kernelver)
+            #TODO: to support suse, but before support chroot first
+            vmlinux = task.prepare_debuginfo(vmcore, cfgdir, kernelver=cmdline.kernelver)
 
             # generate the log
             with open(os.devnull, "w") as null:
@@ -583,7 +584,7 @@ def start_vmcore():
 
     else:
         try:
-            vmlinux = prepare_debuginfo(vmcore, kernelver=cmdline.kernelver)
+            vmlinux = task.prepare_debuginfo(vmcore, kernelver=cmdline.kernelver)
         except Exception as ex:
             log_error("prepare_debuginfo failed: %s" % str(ex))
             fail()
@@ -591,12 +592,14 @@ def start_vmcore():
         task.set_status(STATUS_BACKTRACE)
         log_info(STATUS[STATUS_BACKTRACE])
 
-        child = Popen(["crash", "--minimal", "-s", vmcore, vmlinux], stdin=PIPE, stdout=PIPE, stderr=STDOUT)
+        s_cmd = ["-s", vmcore] + vmlinux
+
+        child = Popen(["crash", "--minimal"] + s_cmd, stdin=PIPE, stdout=PIPE, stderr=STDOUT)
         kernellog = child.communicate("log\nquit\n")[0]
         if child.wait():
             log_warn("crash 'log' exited with %d" % child.returncode)
 
-        child = Popen(["crash", "-s", vmcore, vmlinux], stdin=PIPE, stdout=PIPE, stderr=STDOUT)
+        child = Popen(["crash"] + s_cmd, stdin=PIPE, stdout=PIPE, stderr=STDOUT)
         crash_bt_a = child.communicate("bt -a\nquit\n")[0]
         if child.wait():
             log_warn("crash 'bt -a' exited with %d" % child.returncode)
@@ -604,14 +607,14 @@ def start_vmcore():
 
         crash_kmem_f = None
         if CONFIG["VmcoreRunKmem"] == 1:
-            child = Popen(["crash", "-s", vmcore, vmlinux], stdin=PIPE, stdout=PIPE, stderr=STDOUT)
+            child = Popen(["crash"] + s_cmd, stdin=PIPE, stdout=PIPE, stderr=STDOUT)
             crash_kmem_f = child.communicate("kmem -f\nquit\n")[0]
             if child.wait():
                 log_warn("crash 'kmem -f' exited with %d" % child.returncode)
                 crash_kmem_f = None
 
         if CONFIG["VmcoreRunKmem"] == 2:
-            child = Popen(["crash", "-s", vmcore, vmlinux], stdin=PIPE, stdout=PIPE, stderr=STDOUT)
+            child = Popen(["crash"] + s_cmd, stdin=PIPE, stdout=PIPE, stderr=STDOUT)
             crash_kmem_f = child.communicate("set hash off\nkmem -f\nset hash on\nquit\n")[0]
             if child.wait():
                 log_warn("crash 'kmem -f' exited with %d" % child.returncode)
@@ -619,25 +622,25 @@ def start_vmcore():
 
         crash_kmem_z = None
         if CONFIG["VmcoreRunKmem"] == 3:
-            child = Popen(["crash", "-s", vmcore, vmlinux], stdin=PIPE, stdout=PIPE, stderr=STDOUT)
+            child = Popen(["crash"] + s_cmd, stdin=PIPE, stdout=PIPE, stderr=STDOUT)
             crash_kmem_z = child.communicate("kmem -z\nquit\n")[0]
             if child.wait():
                 log_warn("crash 'kmem -z' exited with %d" % child.returncode)
                 crash_kmem_z = None
 
-        child = Popen(["crash", "-s", vmcore, vmlinux], stdin=PIPE, stdout=PIPE, stderr=STDOUT)
+        child = Popen(["crash"] + s_cmd, stdin=PIPE, stdout=PIPE, stderr=STDOUT)
         crash_sys = child.communicate("sys\nquit\n")[0]
         if child.wait():
             log_warn("crash 'sys' exited with %d" % child.returncode)
             crash_sys = None
 
-        child = Popen(["crash", "-s", vmcore, vmlinux], stdin=PIPE, stdout=PIPE, stderr=STDOUT)
+        child = Popen(["crash"] + s_cmd, stdin=PIPE, stdout=PIPE, stderr=STDOUT)
         crash_sys_c = child.communicate("sys -c\nquit\n")[0]
         if child.wait():
             log_warn("crash 'sys -c' exited with %d" % child.returncode)
             crash_sys_c = None
 
-        child = Popen(["crash", "-s", vmcore, vmlinux], stdin=PIPE, stdout=PIPE, stderr=STDOUT)
+        child = Popen(["crash"] + s_cmd, stdin=PIPE, stdout=PIPE, stderr=STDOUT)
         crash_foreach_bt = child.communicate("foreach bt\nquit\n")[0]
         if child.wait():
             log_warn("crash 'foreach bt' exited with %d" % child.returncode)
