@@ -173,7 +173,9 @@ if __name__ == "__main__":
     rh_searcher = CybertronSearcher(rh_es_url, rh_query_fields, task)  
   
     #print rh_searcher.get_search_result()
-    task.set_rhkb_matched(rh_searcher.get_search_result()) 
+    result = rh_searcher.get_search_result()
+    if result != None:
+        task.set_rhkb_matched(result) 
     
     # Search in VM Bugzilla
     vmb_es_url = "http://cybertron.eng.vmware.com:9200/bugzilla/text/_search"     
@@ -181,6 +183,8 @@ if __name__ == "__main__":
     vmb_searcher = CybertronSearcher(vmb_es_url, vmb_query_fields, task)  
     
     #print vmb_searcher.get_search_result()
-    task.set_vmbugzilla_matched(vmb_searcher.get_search_result())
+    result = vmb_searcher.get_search_result()
+    if result != None:
+        task.set_vmbugzilla_matched(vmb_searcher.get_search_result())
     
     task.set_parser_log(log.getvalue())
