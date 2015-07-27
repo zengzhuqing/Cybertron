@@ -150,15 +150,68 @@ class RedHatKBPage( WebPage ):
             return None
         else:
             return e[0].text_content().strip()
-    
-if __name__ == "__main__":
-    import sys
-    print len(sys.argv)
-    if len(sys.argv) < 2:
-        print "Please provide KB filename"
-        exit(0)
+
+class IKBPage( WebPage ):
+
+    def __init__(self, filename):
+        self.id = os.path.basename(filename)
+        url = "\"https://ikb.vmware.com/contactcenter/php/search.do?cmd=displayKC&docType=kc&externalId=%s&sliceId=1&docTypeID=DT_KB_1_1&dialogID=654982245\"" %(self.id)
+        with open(filename, 'r') as f:
+            html = f.read()
+        WebPage.__init__(self, url, html)
+        self.resolution_class_name = "cc_Resolution"
+        self.solution_class_name = "cc_Solution"
+        self.details_class_name = "cc_Details"
+        self.purpose_class_name = "cc_Purpose"
+        self.cause_class_name = "cc_Cause"
+        self.symptoms_class_name = "cc_Symptoms"
+        self.body_els = self.doc.findall('./body/')
+        if len(self.body_els) > 1:
+            print "Warning: more than one body in html"
  
-    page = RedHatKBPage(sys.argv[1])
+    def get_title(self):
+        e = self.doc.findall('./head/title')
+        if len(e) > 1:
+            print "Warning: more than one title in html"
+        if len(e) == 0:
+            return None
+        else:
+            return e[0].text_content()
+        
+    def get_id(self):
+        return self.id 
+
+    def get_ele(self, name):
+        for ele in self.body_els:
+            e = ele.find_class(name)
+            if len(e) > 1:
+                print "Warning: more than one %s in html" %(name)
+            elif len(e) == 0:
+                continue
+            else:
+                return e[0].text_content().strip()
+        return None  
+
+    def get_symptoms(self):
+        return self.get_ele(self.symptoms_class_name)
+    
+    def get_cause(self):
+        return self.get_ele(self.cause_class_name)
+
+    def get_purpose(self):
+        return self.get_ele(self.purpose_class_name)
+    
+    def get_details(self):
+        return self.get_ele(self.details_class_name)
+
+    def get_solution(self):
+        return self.get_ele(self.solution_class_name)
+
+    def get_resolution(self):
+        return self.get_ele(self.resolution_class_name)
+
+def test_rh_kb(filename):
+    page = RedHatKBPage(filename)
     
     print page.get_language()
     print page.get_url()
@@ -168,3 +221,23 @@ if __name__ == "__main__":
     print page.get_rootcause()
     print page.get_diagnostic()
     print page.get_title()
+
+def test_ikb(filename):
+    page = IKBPage(filename)
+    
+    print page.get_id()
+    print page.get_resolution()
+    print page.get_solution()
+    print page.get_details()
+    print page.get_purpose()
+    print page.get_cause()
+    print page.get_symptoms()
+    print page.get_title()
+ 
+if __name__ == "__main__":
+    import sys
+    print len(sys.argv)
+    if len(sys.argv) < 2:
+        print "Please provide KB filename"
+        exit(0)
+    test_ikb(sys.argv[1])
