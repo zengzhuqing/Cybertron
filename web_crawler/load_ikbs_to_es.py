@@ -70,7 +70,7 @@ class IKB_to_ES_Loader:
         doc = {
             'url': page.get_url(),
             'text': text, 
-            'title': page.get_title()
+            'summary': page.get_title()
         }
         res = self.es.index(index = self.index, doc_type = self.doc_type, id = page.get_id(), body = doc)
         return res['created']
