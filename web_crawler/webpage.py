@@ -209,6 +209,9 @@ class IKBPage( WebPage ):
 
     def get_resolution(self):
         return self.get_ele(self.resolution_class_name)
+    
+    def get_url(self):
+        return self.url    
 
 def test_rh_kb(filename):
     page = RedHatKBPage(filename)
