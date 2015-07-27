@@ -1628,10 +1628,12 @@ class RetraceTask:
 
         # for suse only
         if self.get_release() == SUSE:
+            log_info("SUSE");
             # Just extrace all files of the two packages
             # TODO: vmlinux should be extrace(with gz)
             debugdir_base = os.path.join(CONFIG["RepoDir"], "kernel", kernelver.arch)
             for pack in debuginfo:
+                log_info("prepare debuginfo cache file %s" %(pack))
                 cache_files_from_debuginfo(pack, debugdir_base, [])
                     
             tmp = str(kernelver).split('-',2) 
@@ -1639,8 +1641,15 @@ class RetraceTask:
             rel = tmp[1]
 
             ans = []
-            base_vmlinux_name = "vmlinux-%s-%s-default" %(ver, rel)
+            #extrace vmlinux-defaule file
+            base_vmlinux_name = "vmlinux-%s-%s-default.gz" %(ver, rel)
             cmd = "ls " + os.path.join(debugdir_base, "boot", base_vmlinux_name)
+            child = Popen(["bash", "-c", cmd], stdin=None, stdout=PIPE, stderr=None)
+            testfile = child.communicate()[0][0:-1] #strip '\n'
+            Popen(["gunzip", testfile])
+ 
+            vmlinux_name = "vmlinux-%s-%s-default" %(ver, rel)
+            cmd = "ls " + os.path.join(debugdir_base, "boot", vmlinux_name)
             child = Popen(["bash", "-c", cmd], stdin=None, stdout=PIPE, stderr=None)
             testfile = child.communicate()[0][0:-1] #strip '\n'
             if os.path.isfile(testfile):
@@ -1651,6 +1660,7 @@ class RetraceTask:
             cmd = "ls " + os.path.join(debugdir_base, "usr", "lib", "debug","boot", debug_vmlinux_name)
             child = Popen(["bash", "-c", cmd], stdin=None, stdout=PIPE, stderr=None)
             testfile = child.communicate()[0][0:-1] #strip '\n'
+            #Popen(["gunzip", testfile]) 
             if os.path.isfile(testfile):
                 log_info("Add debug vmlinux file:%s" %(testfile))
                 ans.append(testfile)
