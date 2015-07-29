@@ -135,6 +135,48 @@ def Login():
     else:
         return redirect(url_for("Index"))    
 
+@application.route('/Create_BG', methods=['POST'])
+def Create_BG():
+    qs_base = []
+    if "debug" in request.form and request.form["debug"] == "on":
+        qs_base.append("debug=debug")
+
+    if "vra" in request.form:
+        vra = request.form["vra"]
+
+        if len(vra.strip()) > 0:
+            try:
+                kver = KernelVer(vra)
+                if kver.arch is None:
+                    raise Exception
+            except:
+                return "Please use VRA format for kernel version (e.g. 2.6.32-287.el6.x86_64)"
+
+            qs_base.append("kernelver=%s" % urllib.quote(vra))
+
+    try:
+        task = RetraceTask()
+    except Exception as ex:
+        return "Unable to create a new task"
+
+    # ToDo - support more
+    task.set_type(TASK_VMCORE_INTERACTIVE)
+    task.add_remote(request.form["custom_url"])
+    task.set_managed(True)
+    task.set_url("/%d" % (task.get_taskid()))
+
+    starturl = "/%d/start" % (task.get_taskid())
+    if len(qs_base) > 0:
+        starturl = "%s?%s" % (starturl, "&".join(qs_base))
+
+    # Just start the task
+    task.start()
+
+    # ugly, ugly, ugly! retrace-server-worker double-forks and needs a while to spawn
+    time.sleep(2)
+
+    return "OK"
+    
 @application.route('/Create', methods=['POST'])
 def Create():
     qs_base = []
@@ -684,4 +726,4 @@ def List():
  
 if __name__ == '__main__':
     application.debug = True
-    application.run(host='0.0.0.0')
+    application.run(host='0.0.0.0', port=5555)
