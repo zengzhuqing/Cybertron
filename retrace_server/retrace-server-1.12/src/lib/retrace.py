@@ -1675,72 +1675,72 @@ class RetraceTask:
         else:
             pattern = "/vmlinux"
 
-	    vmlinux_path = None
-	    debugfiles = {}
-	    child = Popen(["rpm", "-qpl", debuginfo], stdout=PIPE)
-	    lines = child.communicate()[0].splitlines()
-	    for line in lines:
-	        if line.endswith(pattern):
-	            vmlinux_path = line
-	            continue
-	
-	        match = KO_DEBUG_PARSER.match(line)
-	        if not match:
-	            continue
-	
-	        # only pick the correct flavour for el4
-	        if "EL" in kernelver.release:
-	            if kernelver.flavour is None:
-	                pattern2 = "EL/"
-	            else:
-	                pattern2 = "EL%s/" % kernelver.flavour
-	
-	            if not pattern2 in os.path.dirname(line):
-	                continue
-	
-	        # '-' in file name is transformed to '_' in module name
-	        debugfiles[match.group(1).replace("-", "_")] = line
-	
-	    debugdir_base = os.path.join(CONFIG["RepoDir"], "kernel", kernelver.arch)
-	    if not os.path.isdir(debugdir_base):
-	        os.makedirs(debugdir_base)
-	
-	    vmlinux = os.path.join(debugdir_base, vmlinux_path.lstrip("/"))
-	    if not os.path.isfile(vmlinux):
-	        cache_files_from_debuginfo(debuginfo, debugdir_base, [vmlinux_path])
-	        if not os.path.isfile(vmlinux):
-	            raise Exception, "Caching vmlinux failed"
-	
-	    if chroot:
-	        with open(os.devnull, "w") as null:
-	            child = Popen(["/usr/bin/mock", "--configdir", chroot, "shell",
-	                           "--", "crash", "-s", vmcore, vmlinux],
-	                           stdin=PIPE, stdout=PIPE, stderr=null)
-	    else:
-	        child = Popen(["crash", "-s", vmcore, vmlinux], stdin=PIPE, stdout=PIPE, stderr=STDOUT)
-	    stdout = child.communicate("mod\nquit")[0]
-	    if child.returncode:
-	        log_warn("Unable to list modules: crash exited with %d:\n%s" % (child.returncode, stdout))
-	        return [vmlinux]
-	
-	    modules = []
-	    for line in stdout.splitlines():
-	        # skip header
-	        if "NAME" in line:
-	            continue
-	
-	        if " " in line:
-	            modules.append(line.split()[1])
-	
-	    todo = []
-	    for module in modules:
-	        if module in debugfiles and \
-	           not os.path.isfile(os.path.join(debugdir_base, debugfiles[module].lstrip("/"))):
-	            todo.append(debugfiles[module])
-	
-	    cache_files_from_debuginfo(debuginfo, debugdir_base, todo)
-	
-	    return [vmlinux]
+        vmlinux_path = None
+        debugfiles = {}
+        child = Popen(["rpm", "-qpl", debuginfo], stdout=PIPE)
+        lines = child.communicate()[0].splitlines()
+        for line in lines:
+            if line.endswith(pattern):
+                vmlinux_path = line
+                continue
+
+            match = KO_DEBUG_PARSER.match(line)
+            if not match:
+                continue
+
+            # only pick the correct flavour for el4
+            if "EL" in kernelver.release:
+                if kernelver.flavour is None:
+                    pattern2 = "EL/"
+                else:
+                    pattern2 = "EL%s/" % kernelver.flavour
+
+                if not pattern2 in os.path.dirname(line):
+                    continue
+
+            # '-' in file name is transformed to '_' in module name
+            debugfiles[match.group(1).replace("-", "_")] = line
+
+        debugdir_base = os.path.join(CONFIG["RepoDir"], "kernel", kernelver.arch)
+        if not os.path.isdir(debugdir_base):
+            os.makedirs(debugdir_base)
+
+        vmlinux = os.path.join(debugdir_base, vmlinux_path.lstrip("/"))
+        if not os.path.isfile(vmlinux):
+            cache_files_from_debuginfo(debuginfo, debugdir_base, [vmlinux_path])
+            if not os.path.isfile(vmlinux):
+                raise Exception, "Caching vmlinux failed"
+
+        if chroot:
+            with open(os.devnull, "w") as null:
+                child = Popen(["/usr/bin/mock", "--configdir", chroot, "shell",
+                               "--", "crash", "-s", vmcore, vmlinux],
+                               stdin=PIPE, stdout=PIPE, stderr=null)
+        else:
+            child = Popen(["crash", "-s", vmcore, vmlinux], stdin=PIPE, stdout=PIPE, stderr=STDOUT)
+        stdout = child.communicate("mod\nquit")[0]
+        if child.returncode:
+            log_warn("Unable to list modules: crash exited with %d:\n%s" % (child.returncode, stdout))
+            return [vmlinux]
+
+        modules = []
+        for line in stdout.splitlines():
+            # skip header
+            if "NAME" in line:
+                continue
+
+            if " " in line:
+                modules.append(line.split()[1])
+
+        todo = []
+        for module in modules:
+            if module in debugfiles and \
+               not os.path.isfile(os.path.join(debugdir_base, debugfiles[module].lstrip("/"))):
+                todo.append(debugfiles[module])
+
+        cache_files_from_debuginfo(debuginfo, debugdir_base, todo)
+
+        return [vmlinux]
 
     def find_kernel_debuginfo(self, kernelver):
         vers = [kernelver]

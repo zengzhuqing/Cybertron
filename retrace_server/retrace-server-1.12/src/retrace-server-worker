@@ -594,16 +594,24 @@ def start_vmcore():
 
         s_cmd = ["-s", vmcore] + vmlinux
 
-        child = Popen(["crash", "--minimal"] + s_cmd, stdin=PIPE, stdout=PIPE, stderr=STDOUT)
-        kernellog = child.communicate("log\nquit\n")[0]
-        if child.wait():
-            log_warn("crash 'log' exited with %d" % child.returncode)
-
         child = Popen(["crash"] + s_cmd, stdin=PIPE, stdout=PIPE, stderr=STDOUT)
         crash_bt_a = child.communicate("bt -a\nquit\n")[0]
         if child.wait():
             log_warn("crash 'bt -a' exited with %d" % child.returncode)
             crash_bt_a = None
+        if child.returncode != 0:
+            extra_cmd = ["--machdep", "phys_base=0x200000"]
+            s_cmd += extra_cmd
+            child = Popen(["crash"] + s_cmd, stdin=PIPE, stdout=PIPE, stderr=STDOUT)
+            crash_bt_a = child.communicate("bt -a\nquit\n")[0]
+            if child.wait():
+                log_warn("crash 'bt -a' exited with %d" % child.returncode)
+                crash_bt_a = None
+        
+        child = Popen(["crash", "--minimal"] + s_cmd, stdin=PIPE, stdout=PIPE, stderr=STDOUT)
+        kernellog = child.communicate("log\nquit\n")[0]
+        if child.wait():
+            log_warn("crash 'log' exited with %d" % child.returncode)
 
         crash_kmem_f = None
         if CONFIG["VmcoreRunKmem"] == 1:
